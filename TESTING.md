@@ -74,7 +74,7 @@ npx tsc --noEmit
 
 ## CI Pipeline (Automated on PRs)
 
-The CI workflow (`.github/workflows/ci.yml`) runs automatically on every pull request to `main`. It executes three parallel jobs:
+The CI workflow (`.github/workflows/ci.yml`) runs automatically on every pull request to `master`. It executes three parallel jobs:
 
 1. **Lint** — ESLint validation
 2. **Type Check** — TypeScript compilation check
@@ -104,7 +104,7 @@ For live testing directly in the browser without any local setup:
 ### Getting Started
 
 1. Go to the repository on GitHub
-2. Click **Code** → **Codespaces** → **Create codespace on main** (or on your branch)
+2. Click **Code** → **Codespaces** → **Create codespace on master** (or on your branch)
 3. Wait for the devcontainer to build (first time takes ~3-5 minutes)
 4. The environment will automatically:
    - Install Node.js 20 and project dependencies
@@ -170,7 +170,7 @@ To enable all testing capabilities, the following one-time setup is needed:
 ### 2. CI Pipeline (Already Configured)
 
 The CI workflow (`.github/workflows/ci.yml`) will run automatically when:
-- A pull request is opened or updated against `main`
+- A pull request is opened or updated against `master`
 - No additional secrets or setup needed — the CI uses its own PostgreSQL service container
 
 ### 3. Optional: Add Secrets for Full Integration Testing
@@ -183,7 +183,7 @@ For testing email functionality in CI:
 
 For enforcing quality on every change:
 1. Go to **Settings** → **Branches** → **Add branch protection rule**
-2. Branch name pattern: `main`
+2. Branch name pattern: `master`
 3. Enable:
    - ☑ Require a pull request before merging
    - ☑ Require status checks to pass before merging
