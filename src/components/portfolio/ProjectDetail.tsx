@@ -1,5 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
+import { RichText } from "@payloadcms/richtext-lexical/react";
+import type { SerializedEditorState } from "lexical";
 import { Container } from "@/components/ui/Container";
 
 interface ProjectDetailProps {
@@ -11,7 +13,7 @@ interface ProjectDetailProps {
     year?: string;
     services?: string[];
     description?: string;
-    content?: string;
+    content?: SerializedEditorState | null;
     galleryImages?: { src: string; alt: string; caption?: string }[];
     previousProject?: { slug: string; title: string } | null;
     nextProject?: { slug: string; title: string } | null;
@@ -27,7 +29,7 @@ export function ProjectDetail({ project }: ProjectDetailProps) {
     year = "2024",
     services = [],
     description = "",
-    content = "",
+    content = null,
     galleryImages = [],
     previousProject = null,
     nextProject = null,
@@ -94,9 +96,9 @@ export function ProjectDetail({ project }: ProjectDetailProps) {
       {content && (
         <Container>
           <div className="py-16 md:py-24 max-w-3xl">
-            <div
+            <RichText
               className="font-sans text-base leading-relaxed text-charcoal-light prose prose-headings:font-serif prose-headings:text-charcoal prose-a:text-accent"
-              dangerouslySetInnerHTML={{ __html: content }}
+              data={content}
             />
           </div>
         </Container>

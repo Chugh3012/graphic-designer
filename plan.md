@@ -10,7 +10,7 @@ A portfolio and freelance services website for a branding & packaging graphic de
 
 | Layer | Technology | Why |
 |---|---|---|
-| **Framework** | Next.js 16 (App Router, TypeScript) | SSR/ISR for SEO, React ecosystem, user's choice |
+| **Framework** | Next.js 15 (App Router, TypeScript) | SSR/ISR for SEO, React ecosystem, user's choice |
 | **CMS** | PayloadCMS 3.x | Next.js-native (single deploy), built-in admin panel at `/admin`, open-source, config-as-code (great for backend engineers), first-class image handling, Azure Blob adapter built-in |
 | **Database** | PostgreSQL 16 | Payload's recommended DB, relational + JSON support |
 | **Styling** | Tailwind CSS v4 | Rapid iteration, small production bundles, design token system |
@@ -38,7 +38,7 @@ Azure Container Registry (Basic ~$5/mo)
         |
         v
 Azure App Service B2 Linux (~$26/mo)
-  |- Next.js 16 + PayloadCMS 3.x
+  |- Next.js 15 + PayloadCMS 3.x
   |- Admin panel at /admin
   |- Server-side rendering
         |

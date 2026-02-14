@@ -44,9 +44,13 @@ export function ContactForm() {
   async function onSubmit(data: ContactFormData) {
     try {
       setSubmitStatus("idle");
-      await submitContactForm(data);
-      setSubmitStatus("success");
-      reset();
+      const result = await submitContactForm(data);
+      if (result.success) {
+        setSubmitStatus("success");
+        reset();
+      } else {
+        setSubmitStatus("error");
+      }
     } catch {
       setSubmitStatus("error");
     }

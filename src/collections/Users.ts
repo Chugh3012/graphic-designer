@@ -7,10 +7,10 @@ export const Users: CollectionConfig = {
     useAsTitle: 'email',
   },
   access: {
-    read: () => true,
-    create: () => true,
-    update: () => true,
-    delete: () => true,
+    read: ({ req: { user } }) => Boolean(user),
+    create: ({ req: { user } }) => Boolean(user),
+    update: ({ req: { user } }) => Boolean(user),
+    delete: ({ req: { user } }) => Boolean(user),
   },
   fields: [],
 }
