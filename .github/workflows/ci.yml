@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 env:
   DATABASE_URI: postgresql://payload:payload_test@localhost:5433/graphic_designer_test
   PAYLOAD_SECRET: ci-test-secret-not-for-production-use-only
