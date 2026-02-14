@@ -1,47 +1,57 @@
 import Image from "next/image";
 import Link from "next/link";
 import { RichText } from "@payloadcms/richtext-lexical/react";
-import type { SerializedEditorState } from "lexical";
 import { Container } from "@/components/ui/Container";
+import type { Project, Media } from "@/payload-types";
 
 interface ProjectDetailProps {
-  project: {
-    title?: string;
-    slug?: string;
-    heroImage?: string;
-    client?: string;
-    year?: string;
-    services?: string[];
-    description?: string;
-    content?: SerializedEditorState | null;
-    galleryImages?: { src: string; alt: string; caption?: string }[];
-    previousProject?: { slug: string; title: string } | null;
-    nextProject?: { slug: string; title: string } | null;
-    [key: string]: unknown;
-  };
+  project: Project;
+}
+
+// Helper to extract image URL from Media object or fallback
+function getImageUrl(media: number | Media | null | undefined, fallback = "/images/placeholder-1.jpg"): string {
+  if (!media) return fallback;
+  if (typeof media === "number") return fallback;
+  return media.url || fallback;
+}
+
+// Helper to extract alt text from Media object
+function getImageAlt(media: number | Media | null | undefined, fallback = ""): string {
+  if (!media) return fallback;
+  if (typeof media === "number") return fallback;
+  return media.alt || fallback;
+}
+
+// Helper to normalize services array
+function normalizeServices(services: { service?: string | null }[] | null | undefined): string[] {
+  if (!services) return [];
+  return services
+    .map((item) => item.service)
+    .filter((service): service is string => !!service);
 }
 
 export function ProjectDetail({ project }: ProjectDetailProps) {
-  const {
-    title = "Untitled Project",
-    heroImage = "/images/placeholder-1.jpg",
-    client = "Client Name",
-    year = "2024",
-    services = [],
-    description = "",
-    content = null,
-    galleryImages = [],
-    previousProject = null,
-    nextProject = null,
-  } = project;
+  const title = project.title || "Untitled Project";
+  const heroImageUrl = getImageUrl(project.heroImage);
+  const heroImageAlt = getImageAlt(project.heroImage, title);
+  const client = project.client || "Client Name";
+  const year = project.year?.toString() || "2024";
+  const services = normalizeServices(project.services);
+  const description = project.summary || "";
+  const content = project.content || null;
+  const gallery = project.gallery || [];
+  
+  // Navigation properties (these would need to be passed from the page)
+  const previousProject = (project as ProjectDetailProps["project"] & { previousProject?: { slug: string; title: string } | null }).previousProject || null;
+  const nextProject = (project as ProjectDetailProps["project"] & { nextProject?: { slug: string; title: string } | null }).nextProject || null;
 
   return (
     <article className="bg-cream">
       {/* Hero Image */}
       <div className="relative w-full aspect-[16/9] md:aspect-[21/9] bg-cream-dark">
         <Image
-          src={heroImage}
-          alt={title}
+          src={heroImageUrl}
+          alt={heroImageAlt}
           fill
           priority
           sizes="100vw"
@@ -105,37 +115,43 @@ export function ProjectDetail({ project }: ProjectDetailProps) {
       )}
 
       {/* Image Gallery Grid */}
-      {galleryImages.length > 0 && (
+      {gallery.length > 0 && (
         <Container>
           <div className="pb-16 md:pb-24">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              {galleryImages.map((image, index) => (
-                <div
-                  key={index}
-                  className={`relative aspect-[4/3] bg-cream-dark rounded-sm overflow-hidden ${
-                    index === 0 ? "md:col-span-2 md:aspect-[16/9]" : ""
-                  }`}
-                >
-                  <Image
-                    src={image.src}
-                    alt={image.alt}
-                    fill
-                    sizes={
-                      index === 0
-                        ? "100vw"
-                        : "(max-width: 768px) 100vw, 50vw"
-                    }
-                    className="object-cover"
-                  />
-                  {image.caption && (
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-charcoal/60 to-transparent">
-                      <p className="font-sans text-xs text-cream/90">
-                        {image.caption}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))}
+              {gallery.map((item, index) => {
+                const imageUrl = getImageUrl(item.image);
+                const imageAlt = getImageAlt(item.image, `Gallery image ${index + 1}`);
+                const caption = item.caption || "";
+                
+                return (
+                  <div
+                    key={item.id || index}
+                    className={`relative aspect-[4/3] bg-cream-dark rounded-sm overflow-hidden ${
+                      index === 0 ? "md:col-span-2 md:aspect-[16/9]" : ""
+                    }`}
+                  >
+                    <Image
+                      src={imageUrl}
+                      alt={imageAlt}
+                      fill
+                      sizes={
+                        index === 0
+                          ? "100vw"
+                          : "(max-width: 768px) 100vw, 50vw"
+                      }
+                      className="object-cover"
+                    />
+                    {caption && (
+                      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-charcoal/60 to-transparent">
+                        <p className="font-sans text-xs text-cream/90">
+                          {caption}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </Container>
