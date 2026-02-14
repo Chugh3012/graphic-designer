@@ -14,7 +14,7 @@ export async function getPublishedProjects(category?: string): Promise<any[]> {
   }
 
   if (category) {
-    where['category.slug'] = { equals: category }
+    where['categories.slug'] = { equals: category }
   }
 
   const { docs } = await payload.find({
