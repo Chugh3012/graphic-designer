@@ -42,3 +42,6 @@ tmpclaude-*
 test-results/
 playwright-report/
 playwright/.cache/
+
+# Lighthouse CI
+.lighthouseci/
