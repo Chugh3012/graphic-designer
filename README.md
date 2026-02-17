@@ -1,4 +1,4 @@
-﻿# Graphic Designer Portfolio
+# Graphic Designer Portfolio
 
 [![CI](https://github.com/Chugh3012/graphic-designer/actions/workflows/ci.yml/badge.svg)](https://github.com/Chugh3012/graphic-designer/actions/workflows/ci.yml)
 [![Deploy to Production](https://github.com/Chugh3012/graphic-designer/actions/workflows/deploy-production.yml/badge.svg)](https://github.com/Chugh3012/graphic-designer/actions/workflows/deploy-production.yml)

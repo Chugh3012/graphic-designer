@@ -70,8 +70,8 @@ jobs:
       - name: Check Azure credentials
         id: check-secrets
         run: |
-          if [ -z "${{ secrets.ACR_REGISTRY }}" ] || [ -z "${{ secrets.ACR_USERNAME }}" ] || [ -z "${{ secrets.ACR_PASSWORD }}" ]; then
-            echo "❌ Azure Container Registry secrets are not configured"
+          if [ -z "${{ secrets.ACR_REGISTRY }}" ] || [ -z "${{ secrets.ACR_USERNAME }}" ] || [ -z "${{ secrets.ACR_PASSWORD }}" ] || [ -z "${{ secrets.AZURE_CREDENTIALS }}" ] || [ -z "${{ secrets.AZURE_APP_SERVICE_NAME }}" ]; then
+            echo "❌ Azure deployment secrets are not configured"
             echo "Please configure the following secrets in repository settings:"
             echo "  - ACR_REGISTRY"
             echo "  - ACR_USERNAME"
@@ -80,8 +80,8 @@ jobs:
             echo "  - AZURE_APP_SERVICE_NAME"
             echo ""
             echo "See CI-STATUS.md for more information"
+            echo "::warning::Azure deployment secrets are not configured. Deployment will be skipped."
             echo "secrets_configured=false" >> $GITHUB_OUTPUT
-            exit 0
           else
             echo "✅ Azure credentials are configured"
             echo "secrets_configured=true" >> $GITHUB_OUTPUT
@@ -145,4 +145,15 @@ jobs:
             echo "✅ Content verification passed"
           else
             echo "⚠️ Warning: Expected content not found in response"
+          fi
+
+      - name: Deployment Summary
+        if: always()
+        run: |
+          if [ "${{ steps.check-secrets.outputs.secrets_configured }}" = "true" ]; then
+            echo "✅ Deployment completed successfully"
+          else
+            echo "⚠️ Deployment was skipped due to missing Azure secrets"
+            echo "Configure secrets in repository settings to enable deployment"
+            echo "See CI-STATUS.md for instructions"
           fi
