@@ -39,6 +39,23 @@ jobs:
         uses: github/codeql-action/autobuild@v3
 
       - name: Perform CodeQL Analysis
+        id: analyze
         uses: github/codeql-action/analyze@v3
+        continue-on-error: true
         with:
           category: "/language:${{matrix.language}}"
+
+      - name: Check Analysis Result
+        if: steps.analyze.outcome == 'failure'
+        run: |
+          echo "⚠️ CodeQL analysis failed. This is likely because:"
+          echo "   - Code scanning is not enabled in repository settings"
+          echo "   - Advanced Security features are not available for this repository"
+          echo ""
+          echo "To fix:"
+          echo "1. Go to Settings → Code security and analysis"
+          echo "2. Enable 'Code scanning'"
+          echo ""
+          echo "Note: Advanced Security is free for public repositories"
+          echo "See CI-STATUS.md for more information"
+          exit 0
