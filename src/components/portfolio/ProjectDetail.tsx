@@ -9,7 +9,7 @@ interface ProjectDetailProps {
 }
 
 // Helper to extract image URL from Media object or fallback
-function getImageUrl(media: number | Media | null | undefined, fallback = "/images/placeholder-1.jpg"): string {
+function getImageUrl(media: number | Media | null | undefined, fallback = "/images/placeholder-1.svg"): string {
   if (!media) return fallback;
   if (typeof media === "number") return fallback;
   return media.url || fallback;

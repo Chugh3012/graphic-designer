@@ -6,25 +6,25 @@ const featuredProjects = [
   {
     title: "Botanica Brand Identity",
     slug: "botanica-brand-identity",
-    heroImage: "/images/placeholder-1.jpg",
+    heroImage: "/images/placeholder-1.svg",
     categories: ["Branding", "Identity"],
   },
   {
     title: "Solstice Packaging",
     slug: "solstice-packaging",
-    heroImage: "/images/placeholder-2.jpg",
+    heroImage: "/images/placeholder-2.svg",
     categories: ["Packaging", "Print"],
   },
   {
     title: "Meridian Studio Rebrand",
     slug: "meridian-studio-rebrand",
-    heroImage: "/images/placeholder-3.jpg",
+    heroImage: "/images/placeholder-3.svg",
     categories: ["Branding", "Identity"],
   },
   {
     title: "Terre Print Collection",
     slug: "terre-print-collection",
-    heroImage: "/images/placeholder-4.jpg",
+    heroImage: "/images/placeholder-4.svg",
     categories: ["Print", "Packaging"],
   },
 ];
