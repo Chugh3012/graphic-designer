@@ -10,7 +10,7 @@ export async function submitContactForm(
   const result = contactFormSchema.safeParse(data)
 
   if (!result.success) {
-    const firstError = result.error.errors[0]?.message ?? 'Invalid form data'
+    const firstError = result.error.issues[0]?.message ?? 'Invalid form data'
     return { success: false, message: firstError }
   }
 
