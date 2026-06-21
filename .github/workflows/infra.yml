@@ -1,0 +1,67 @@
+name: Provision Infrastructure
+
+# Provisions/updates the Azure infrastructure from infra/main.bicep via OIDC.
+# Run manually (workflow_dispatch) when infrastructure changes — not on every
+# code push. Secure values come from GitHub Environment secrets, never the repo.
+
+on:
+  workflow_dispatch:
+    inputs:
+      location:
+        description: Azure region
+        default: westeurope
+        type: string
+
+concurrency:
+  group: infra-provision
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  RG: ${{ secrets.AZURE_RESOURCE_GROUP }}
+
+jobs:
+  provision:
+    name: Deploy Bicep
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Ensure resource group
+        run: az group create -n "$RG" -l "${{ inputs.location }}" --only-show-errors
+
+      - name: Validate (what-if)
+        run: |
+          az deployment group what-if \
+            -g "$RG" \
+            --template-file infra/main.bicep \
+            --parameters infra/parameters.json \
+            --parameters \
+              postgresPassword="${{ secrets.POSTGRES_PASSWORD }}" \
+              payloadSecret="${{ secrets.PAYLOAD_SECRET }}" \
+              acsConnectionString="${{ secrets.ACS_CONNECTION_STRING }}" \
+              deployerObjectId="${{ secrets.DEPLOYER_OBJECT_ID }}"
+
+      - name: Deploy
+        run: |
+          az deployment group create \
+            -g "$RG" \
+            --template-file infra/main.bicep \
+            --parameters infra/parameters.json \
+            --parameters \
+              postgresPassword="${{ secrets.POSTGRES_PASSWORD }}" \
+              payloadSecret="${{ secrets.PAYLOAD_SECRET }}" \
+              acsConnectionString="${{ secrets.ACS_CONNECTION_STRING }}" \
+              deployerObjectId="${{ secrets.DEPLOYER_OBJECT_ID }}"

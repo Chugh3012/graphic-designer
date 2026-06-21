@@ -1,39 +1,19 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
+  "_comment": "Non-secret defaults only. Secure parameters (postgresPassword, payloadSecret, acsConnectionString) and containerImage are passed by the deploy workflow from GitHub Actions secrets — never committed here.",
   "parameters": {
+    "appName": {
+      "value": "graphic-designer"
+    },
     "environmentName": {
       "value": "production"
     },
     "location": {
       "value": "westeurope"
     },
-    "appName": {
-      "value": "graphic-designer"
-    },
-    "postgresPassword": {
-      "reference": {
-        "keyVault": {
-          "id": "/subscriptions/{subscription-id}/resourceGroups/{rg-name}/providers/Microsoft.KeyVault/vaults/{vault-name}"
-        },
-        "secretName": "postgres-password"
-      }
-    },
-    "payloadSecret": {
-      "reference": {
-        "keyVault": {
-          "id": "/subscriptions/{subscription-id}/resourceGroups/{rg-name}/providers/Microsoft.KeyVault/vaults/{vault-name}"
-        },
-        "secretName": "payload-secret"
-      }
-    },
-    "resendApiKey": {
-      "reference": {
-        "keyVault": {
-          "id": "/subscriptions/{subscription-id}/resourceGroups/{rg-name}/providers/Microsoft.KeyVault/vaults/{vault-name}"
-        },
-        "secretName": "resend-api-key"
-      }
+    "emailFrom": {
+      "value": "DoNotReply@example.com"
     },
     "contactEmailTo": {
       "value": "designer@example.com"
