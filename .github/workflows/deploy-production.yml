@@ -1,9 +1,10 @@
 name: Deploy to Production
 
-# Builds the container image in ACR (passwordless), runs database migrations,
-# then rolls the new image onto the Container App. Authentication is via GitHub
-# OIDC federated credentials — no stored service-principal secret, no ACR
-# password. Assumes infrastructure already exists (see infra.yml).
+# Builds the image, pushes it to the GitHub Container Registry (ghcr.io — free),
+# then rolls it onto the Azure Container App. Auth is passwordless: GITHUB_TOKEN
+# for ghcr.io and GitHub OIDC for Azure. Schema is auto-synced on boot (SQLite),
+# so there is no separate migration step. Assumes infrastructure already exists
+# (see infra.yml).
 
 on:
   push:
@@ -16,20 +17,38 @@ concurrency:
 
 permissions:
   contents: read
+  packages: write
   id-token: write
 
 env:
   RG: ${{ secrets.AZURE_RESOURCE_GROUP }}
   APP_BASE: graphic-designer-production
+  IMAGE: ghcr.io/${{ github.repository_owner }}/graphic-designer
 
 jobs:
   deploy:
-    name: Build, migrate & deploy
+    name: Build & deploy
     runs-on: ubuntu-latest
     environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
@@ -38,61 +57,11 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Resolve resource names
-        id: names
-        run: |
-          ACR=$(az acr list -g "$RG" --query "[0].name" -o tsv)
-          KV=$(az keyvault list -g "$RG" --query "[0].name" -o tsv)
-          LOGIN_SERVER=$(az acr show -n "$ACR" --query loginServer -o tsv)
-          echo "acr=$ACR" >> "$GITHUB_OUTPUT"
-          echo "kv=$KV" >> "$GITHUB_OUTPUT"
-          echo "login_server=$LOGIN_SERVER" >> "$GITHUB_OUTPUT"
-
-      - name: Build & push image (ACR Tasks — passwordless)
-        run: |
-          az acr build \
-            --registry "${{ steps.names.outputs.acr }}" \
-            --image graphic-designer:${{ github.sha }} \
-            --image graphic-designer:latest \
-            .
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies (for migrations)
-        run: npm ci
-
-      - name: Open temporary DB firewall for runner
-        id: fw
-        run: |
-          RUNNER_IP=$(curl -s https://api.ipify.org)
-          echo "rule=gha-migrate-${{ github.run_id }}" >> "$GITHUB_OUTPUT"
-          az postgres flexible-server firewall-rule create \
-            -g "$RG" -n "${APP_BASE}-postgres" \
-            --rule-name "gha-migrate-${{ github.run_id }}" \
-            --start-ip-address "$RUNNER_IP" --end-ip-address "$RUNNER_IP"
-
-      - name: Run database migrations
-        run: |
-          DB_URI=$(az keyvault secret show --vault-name "${{ steps.names.outputs.kv }}" --name database-uri --query value -o tsv)
-          SECRET=$(az keyvault secret show --vault-name "${{ steps.names.outputs.kv }}" --name payload-secret --query value -o tsv)
-          DATABASE_URI="$DB_URI" PAYLOAD_SECRET="$SECRET" NODE_ENV=production npm run migrate
-
-      - name: Close temporary DB firewall
-        if: always() && steps.fw.outputs.rule != ''
-        run: |
-          az postgres flexible-server firewall-rule delete \
-            -g "$RG" -n "${APP_BASE}-postgres" \
-            --rule-name "${{ steps.fw.outputs.rule }}" --yes || true
-
       - name: Roll out new image
         run: |
           az containerapp update \
             -g "$RG" -n "${APP_BASE}-app" \
-            --image "${{ steps.names.outputs.login_server }}/graphic-designer:${{ github.sha }}"
+            --image "${{ env.IMAGE }}:${{ github.sha }}"
 
       - name: Smoke test /healthz
         run: |

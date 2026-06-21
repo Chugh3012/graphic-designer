@@ -63,3 +63,9 @@ infra/main.json
 
 # Local run logs
 *.log
+
+# SQLite database files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

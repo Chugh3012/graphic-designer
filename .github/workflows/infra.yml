@@ -49,7 +49,6 @@ jobs:
             --template-file infra/main.bicep \
             --parameters infra/parameters.json \
             --parameters \
-              postgresPassword="${{ secrets.POSTGRES_PASSWORD }}" \
               payloadSecret="${{ secrets.PAYLOAD_SECRET }}" \
               acsConnectionString="${{ secrets.ACS_CONNECTION_STRING }}" \
               deployerObjectId="${{ secrets.DEPLOYER_OBJECT_ID }}"
@@ -61,7 +60,6 @@ jobs:
             --template-file infra/main.bicep \
             --parameters infra/parameters.json \
             --parameters \
-              postgresPassword="${{ secrets.POSTGRES_PASSWORD }}" \
               payloadSecret="${{ secrets.PAYLOAD_SECRET }}" \
               acsConnectionString="${{ secrets.ACS_CONNECTION_STRING }}" \
               deployerObjectId="${{ secrets.DEPLOYER_OBJECT_ID }}"

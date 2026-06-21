@@ -15,8 +15,8 @@ Add a test alongside any new non-trivial pure function.
 ## E2E tests — `npm run test:e2e`
 
 Playwright specs in [tests/e2e](tests/e2e). The config auto-starts `next dev` on
-:3000 (dev push-mode creates the schema), so a local/CI Postgres on :5433 is
-required. Useful variants:
+:3000, which creates a local SQLite database on first run — no database server
+needed. Useful variants:
 
 ```bash
 npm run test:e2e:ui       # interactive

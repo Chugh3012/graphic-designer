@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  DATABASE_URI: postgresql://payload:payload_test@localhost:5433/graphic_designer_test
+  DATABASE_URI: file:./portfolio.db
   PAYLOAD_SECRET: ci-test-secret-not-for-production-use-only
   NEXT_PUBLIC_SITE_URL: http://localhost:3000
 
@@ -188,21 +188,6 @@ jobs:
   lighthouse:
     name: Lighthouse CI
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: graphic_designer_test
-          POSTGRES_USER: payload
-          POSTGRES_PASSWORD: payload_test
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd="pg_isready -U payload -d graphic_designer_test"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -248,21 +233,6 @@ jobs:
   e2e-tests:
     name: E2E Tests
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: graphic_designer_test
-          POSTGRES_USER: payload
-          POSTGRES_PASSWORD: payload_test
-        ports:
-          - 5433:5432
-        options: >-
-          --health-cmd="pg_isready -U payload -d graphic_designer_test"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

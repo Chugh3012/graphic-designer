@@ -44,9 +44,14 @@ export default buildConfig({
       // at the SQLite file on the mounted Azure Files volume (set via env).
       url: process.env.DATABASE_URI || 'file:./data/portfolio.db',
     },
-    // In production, schema changes must go through committed migrations
-    // (`payload migrate`). Dev keeps auto-push for fast iteration.
-    push: process.env.NODE_ENV !== 'production',
+    // Single-instance SQLite portfolio: auto-sync the schema on boot. The DB
+    // file lives on a mounted volume only reachable from inside the container,
+    // so a separate `payload migrate` step isn't practical; push keeps the
+    // (single-writer) schema in step with the config. Migrations are still
+    // committed for reference.
+    // ponytail: push can drop columns on a destructive change. For a risky
+    // schema change, run `payload migrate` against the volume instead.
+    push: true,
     migrationDir: path.resolve(dirname, 'migrations'),
   }),
 

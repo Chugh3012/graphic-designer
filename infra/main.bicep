@@ -1,19 +1,22 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Graphic Designer Portfolio — Azure infrastructure (single source of truth)
 //
-// Topology: Azure Container Apps (scale-to-zero capable) fronted by managed
-// ingress, with a user-assigned managed identity used for:
-//   • passwordless image pull from ACR (AcrPull)
-//   • passwordless secret retrieval from Key Vault (Key Vault Secrets User)
+// Minimal, ~$0/month topology:
+//   • Azure Container Apps  — scale-to-zero, max 1 replica, inside the free grant
+//   • Azure Files share     — holds the SQLite database file AND media uploads
+//   • Key Vault             — PAYLOAD_SECRET + email connection string (MI-read)
+//   • Log Analytics + App Insights (free tier)
 //
-// Payload's Postgres + Azure Blob adapters require connection strings, so the
-// few unavoidable secrets live in Key Vault and are injected into the Container
-// App via the managed identity — never stored in the repo or the CI pipeline.
+// No managed database, no container registry (images come from ghcr.io), no Blob.
+// The app's managed identity reads secrets from Key Vault; the deploy pipeline
+// uses GitHub OIDC. The only unavoidable key is the storage-account key used by
+// the Container Apps Azure Files mount (held in the managed-environment config,
+// never in the repo).
 //
-// ponytail: Postgres uses password auth (in Key Vault) and public-network +
-// firewall access. Ceiling: not VNet-private and not Entra-token auth. Upgrade
-// path: add a VNet with private endpoints for Postgres/Storage/Key Vault and
-// switch the pg pool to a Microsoft Entra token password provider.
+// ponytail: SQLite lives on an SMB (Azure Files) share, so the app runs at a
+// single writer — minReplicas 0, maxReplicas 1. Fine for a read-heavy portfolio
+// with one admin. Upgrade path if write concurrency is ever needed: Turso
+// (libSQL, free) or a managed Postgres.
 // ─────────────────────────────────────────────────────────────────────────────
 
 @description('Application name used for resource naming.')
@@ -25,28 +28,25 @@ param environmentName string = 'production'
 @description('Azure region for all resources.')
 param location string = resourceGroup().location
 
-@description('Full container image reference to deploy. CI overrides this with the freshly built image; the default is a placeholder for the very first infra deploy.')
+@description('Full container image reference to deploy (e.g. ghcr.io/owner/graphic-designer:sha). The default placeholder is used for the first infra deploy; CI overrides it.')
 param containerImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
-@description('Payload CMS secret (sourced from a CI secret; stored in Key Vault).')
+@description('Payload CMS secret (openssl rand -hex 32). Stored in Key Vault.')
 @secure()
 param payloadSecret string
 
-@description('Azure Communication Services connection string for transactional email.')
+@description('Azure Communication Services connection string for the contact-form email. Stored in Key Vault. Leave empty to disable email.')
 @secure()
-param acsConnectionString string
+param acsConnectionString string = ''
 
 @description('Verified sender address for Azure Communication Email.')
-param emailFrom string
+param emailFrom string = 'DoNotReply@example.com'
 
 @description('Recipient address for contact-form submissions.')
-param contactEmailTo string
+param contactEmailTo string = ''
 
-@description('Object ID of the deploying principal, granted Key Vault admin for break-glass access and set as a Microsoft Entra administrator on PostgreSQL (so migrations can run with an Entra token). Leave empty to skip.')
+@description('Object ID of the deploying principal, granted Key Vault admin for break-glass access. Leave empty to skip.')
 param deployerObjectId string = ''
-
-@description('Principal (user/group) name of the deployer, e.g. the UPN. Required when deployerObjectId is set, for the PostgreSQL Entra administrator.')
-param deployerPrincipalName string = ''
 
 var resourcePrefix = '${appName}-${environmentName}'
 var tags = {
@@ -55,20 +55,16 @@ var tags = {
   managedBy: 'bicep'
 }
 
-// Stable, globally-unique suffix for resources that need flat names.
 var uniqueSuffix = uniqueString(resourceGroup().id, resourcePrefix)
 var storageAccountName = toLower(take('${replace(appName, '-', '')}${uniqueSuffix}', 24))
-var acrName = toLower(take('${replace(appName, '-', '')}acr${uniqueSuffix}', 50))
 var keyVaultName = toLower(take('${replace(appName, '-', '')}kv${uniqueSuffix}', 24))
-var databaseName = 'graphic_designer'
+var fileShareName = 'appdata'
+var mountPath = '/app/.data'
 
-// Built-in role definition IDs
-var acrPullRoleId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 var kvSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 var kvAdminRoleId = '00482a5a-887f-4fb3-b363-3b7fe8e74483'
-var blobDataContributorRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 
-// ── Observability ────────────────────────────────────────────────────────────
+// ── Observability (free tier) ────────────────────────────────────────────────
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
   name: '${resourcePrefix}-logs'
   location: location
@@ -91,36 +87,14 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-// ── Identity ─────────────────────────────────────────────────────────────────
+// ── Identity (used to read Key Vault secrets) ────────────────────────────────
 resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: '${resourcePrefix}-id'
   location: location
   tags: tags
 }
 
-// ── Container Registry (admin disabled — image pull is via managed identity) ──
-resource acr 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' = {
-  name: acrName
-  location: location
-  tags: tags
-  sku: { name: 'Basic' }
-  properties: {
-    adminUserEnabled: false
-    publicNetworkAccess: 'Enabled'
-  }
-}
-
-resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(acr.id, uami.id, acrPullRoleId)
-  scope: acr
-  properties: {
-    principalId: uami.properties.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleId)
-  }
-}
-
-// ── Storage for portfolio media ──────────────────────────────────────────────
+// ── Storage account + file share (SQLite DB + media uploads) ─────────────────
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageAccountName
   location: location
@@ -128,100 +102,27 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   sku: { name: 'Standard_LRS' }
   kind: 'StorageV2'
   properties: {
-    accessTier: 'Hot'
-    // Portfolio media is intentionally public-readable so image URLs resolve
-    // directly from Blob (Payload serves blob URLs without proxying).
-    allowBlobPublicAccess: true
+    allowBlobPublicAccess: false
     supportsHttpsTrafficOnly: true
     minimumTlsVersion: 'TLS1_2'
   }
 }
 
-resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = {
+resource fileService 'Microsoft.Storage/storageAccounts/fileServices@2023-05-01' = {
   parent: storageAccount
   name: 'default'
 }
 
-resource mediaContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
-  parent: blobService
-  name: 'portfolio-media'
+resource fileShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2023-05-01' = {
+  parent: fileService
+  name: fileShareName
   properties: {
-    publicAccess: 'Blob'
+    shareQuota: 16
+    enabledProtocols: 'SMB'
   }
 }
 
-// Allow the app identity to manage blobs (uploads from the admin panel).
-resource blobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, uami.id, blobDataContributorRoleId)
-  scope: storageAccount
-  properties: {
-    principalId: uami.properties.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', blobDataContributorRoleId)
-  }
-}
-
-// ── PostgreSQL Flexible Server ───────────────────────────────────────────────
-resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' = {
-  name: '${resourcePrefix}-postgres'
-  location: location
-  tags: tags
-  sku: {
-    name: 'Standard_B1ms'
-    tier: 'Burstable'
-  }
-  properties: {
-    version: '16'
-    // Passwordless: Microsoft Entra authentication only, no password login.
-    authConfig: {
-      activeDirectoryAuth: 'Enabled'
-      passwordAuth: 'Disabled'
-      tenantId: subscription().tenantId
-    }
-    storage: {
-      storageSizeGB: 32
-      autoGrow: 'Enabled'
-    }
-    backup: {
-      backupRetentionDays: 7
-      geoRedundantBackup: 'Disabled'
-    }
-    highAvailability: { mode: 'Disabled' }
-    network: { publicNetworkAccess: 'Enabled' }
-  }
-}
-
-// The deployer as the Microsoft Entra administrator on PostgreSQL. The app's
-// managed identity is added as a database role post-deploy via SQL
-// (pgaadauth_create_principal) — its object id isn't known at template start,
-// so it can't be a resource name here.
-resource postgresAdminDeployer 'Microsoft.DBforPostgreSQL/flexibleServers/administrators@2024-08-01' = if (!empty(deployerObjectId)) {
-  parent: postgresServer
-  name: deployerObjectId
-  dependsOn: [postgresFirewallAzure]
-  properties: {
-    principalName: deployerPrincipalName
-    principalType: 'User'
-    tenantId: subscription().tenantId
-  }
-}
-
-resource postgresDatabase 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2024-08-01' = {
-  parent: postgresServer
-  name: databaseName
-}
-
-// Allow Azure services (the Container App) to reach the database.
-resource postgresFirewallAzure 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2024-08-01' = {
-  parent: postgresServer
-  name: 'AllowAzureServices'
-  properties: {
-    startIpAddress: '0.0.0.0'
-    endIpAddress: '0.0.0.0'
-  }
-}
-
-// ── Key Vault (RBAC) — holds the connection strings the app needs ────────────
+// ── Key Vault (RBAC) ─────────────────────────────────────────────────────────
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: keyVaultName
   location: location
@@ -265,10 +166,10 @@ resource secretPayload 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
 resource secretAcs 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVault
   name: 'acs-connection-string'
-  properties: { value: acsConnectionString }
+  properties: { value: empty(acsConnectionString) ? 'unset' : acsConnectionString }
 }
 
-// ── Container Apps Environment ───────────────────────────────────────────────
+// ── Container Apps Environment + Azure Files storage link ────────────────────
 resource caeEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: '${resourcePrefix}-env'
   location: location
@@ -280,6 +181,19 @@ resource caeEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
         customerId: logAnalytics.properties.customerId
         sharedKey: logAnalytics.listKeys().primarySharedKey
       }
+    }
+  }
+}
+
+resource caeStorage 'Microsoft.App/managedEnvironments/storages@2024-03-01' = {
+  parent: caeEnv
+  name: fileShareName
+  properties: {
+    azureFile: {
+      accountName: storageAccount.name
+      accountKey: storageAccount.listKeys().keys[0].value
+      shareName: fileShareName
+      accessMode: 'ReadWrite'
     }
   }
 }
@@ -296,12 +210,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     }
   }
   dependsOn: [
-    acrPull
     kvSecretsUser
-    blobContributor
-    postgresAdminDeployer
     secretPayload
     secretAcs
+    caeStorage
   ]
   properties: {
     managedEnvironmentId: caeEnv.id
@@ -313,12 +225,6 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         transport: 'auto'
         allowInsecure: false
       }
-      registries: [
-        {
-          server: acr.properties.loginServer
-          identity: uami.id
-        }
-      ]
       secrets: [
         {
           name: 'payload-secret'
@@ -341,17 +247,18 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json('0.5')
             memory: '1Gi'
           }
+          volumeMounts: [
+            {
+              volumeName: fileShareName
+              mountPath: mountPath
+            }
+          ]
           env: [
             { name: 'NODE_ENV', value: 'production' }
-            // Passwordless Postgres via Entra token (managed identity)
-            { name: 'AZURE_POSTGRES_HOST', value: postgresServer.properties.fullyQualifiedDomainName }
-            { name: 'AZURE_POSTGRES_USER', value: '${resourcePrefix}-id' }
-            { name: 'AZURE_POSTGRES_DB', value: databaseName }
-            { name: 'AZURE_CLIENT_ID', value: uami.properties.clientId }
+            // SQLite database file + media uploads live on the mounted Azure Files share.
+            { name: 'DATABASE_URI', value: 'file:${mountPath}/portfolio.db' }
+            { name: 'MEDIA_DIR', value: '${mountPath}/media' }
             { name: 'PAYLOAD_SECRET', secretRef: 'payload-secret' }
-            // Passwordless Blob via managed identity
-            { name: 'AZURE_STORAGE_ACCOUNT_NAME', value: storageAccount.name }
-            { name: 'AZURE_STORAGE_CONTAINER_NAME', value: 'portfolio-media' }
             { name: 'AZURE_COMMUNICATION_CONNECTION_STRING', secretRef: 'acs-connection-string' }
             { name: 'EMAIL_FROM', value: emailFrom }
             { name: 'CONTACT_EMAIL_TO', value: contactEmailTo }
@@ -362,40 +269,33 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               type: 'Liveness'
               httpGet: { path: '/healthz', port: 3000 }
-              initialDelaySeconds: 10
+              initialDelaySeconds: 15
               periodSeconds: 30
-            }
-            {
-              type: 'Readiness'
-              httpGet: { path: '/healthz', port: 3000 }
-              initialDelaySeconds: 5
-              periodSeconds: 15
             }
           ]
         }
       ]
+      volumes: [
+        {
+          name: fileShareName
+          storageType: 'AzureFile'
+          storageName: fileShareName
+        }
+      ]
       scale: {
-        minReplicas: 1
-        maxReplicas: 3
-        rules: [
-          {
-            name: 'http-scale'
-            http: { metadata: { concurrentRequests: '50' } }
-          }
-        ]
+        // Single writer for SQLite-on-SMB. Scales to zero when idle (free grant).
+        minReplicas: 0
+        maxReplicas: 1
       }
     }
   }
 }
 
-// ── Outputs (consumed by the deploy workflow) ────────────────────────────────
-output acrName string = acr.name
-output acrLoginServer string = acr.properties.loginServer
+// ── Outputs ──────────────────────────────────────────────────────────────────
 output containerAppName string = containerApp.name
 output containerAppFqdn string = containerApp.properties.configuration.ingress.fqdn
 output keyVaultName string = keyVault.name
-output postgresServerName string = postgresServer.name
-output postgresServerFqdn string = postgresServer.properties.fullyQualifiedDomainName
+output storageAccountName string = storageAccount.name
 output managedIdentityClientId string = uami.properties.clientId
 output appInsightsConnectionString string = appInsights.properties.ConnectionString
 output siteUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
