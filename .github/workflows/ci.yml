@@ -11,7 +11,6 @@ concurrency:
 
 permissions:
   contents: read
-  security-events: write
 
 env:
   DATABASE_URI: postgresql://payload:payload_test@localhost:5433/graphic_designer_test
@@ -141,21 +140,7 @@ jobs:
       - name: Load Docker image
         run: docker load --input /tmp/image.tar
 
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: graphic-designer:test
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-
-      - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with:
-          sarif_file: 'trivy-results.sarif'
-
-      - name: Run Trivy vulnerability scanner (table format)
+      - name: Run Trivy vulnerability scanner (fail on CRITICAL/HIGH)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: graphic-designer:test

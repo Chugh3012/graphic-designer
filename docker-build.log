@@ -1,0 +1,133 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 990B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node:20-alpine
+#2 DONE 1.8s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 750B done
+#3 DONE 0.0s
+
+#4 [deps 1/5] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#4 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+#4 DONE 0.0s
+
+#5 [builder 2/5] WORKDIR /app
+#5 CACHED
+
+#6 [runner 3/9] RUN addgroup --system --gid 1001 nodejs
+#6 CACHED
+
+#7 [runner 4/9] RUN adduser --system --uid 1001 nextjs
+#7 CACHED
+
+#8 [internal] load build context
+#8 transferring context: 537.82kB 0.1s done
+#8 DONE 0.1s
+
+#9 [deps 2/5] RUN apk add --no-cache libc6-compat
+#9 CACHED
+
+#10 [deps 3/5] WORKDIR /app
+#10 CACHED
+
+#11 [deps 4/5] COPY package.json package-lock.json* ./
+#11 DONE 0.1s
+
+#12 [deps 5/5] RUN npm ci
+#12 41.98 npm warn deprecated @esbuild-kit/core-utils@3.3.2: Merged into tsx: https://tsx.is
+#12 42.21 npm warn deprecated @esbuild-kit/esm-loader@2.6.5: Merged into tsx: https://tsx.is
+#12 91.10 
+#12 91.10 added 884 packages in 2m
+#12 91.10 
+#12 91.10 249 packages are looking for funding
+#12 91.10   run `npm fund` for details
+#12 91.11 npm notice
+#12 91.11 npm notice New major version of npm available! 10.8.2 -> 11.17.0
+#12 91.11 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.17.0
+#12 91.11 npm notice To update run: npm install -g npm@11.17.0
+#12 91.11 npm notice
+#12 DONE 92.8s
+
+#13 [builder 3/5] COPY --from=deps /app/node_modules ./node_modules
+#13 DONE 18.5s
+
+#14 [builder 4/5] COPY . .
+#14 DONE 1.0s
+
+#15 [builder 5/5] RUN npm run build
+#15 1.257 
+#15 1.257 > graphic-designer@0.1.0 build
+#15 1.257 > next build
+#15 1.257 
+#15 2.659 Γû▓ Next.js 16.2.9 (Turbopack)
+#15 2.662 - Experiments (use with caution):
+#15 2.662   Γ¿» turbopackServerFastRefresh
+#15 2.662 
+#15 2.744   Creating an optimized production build ...
+#15 32.76 Γ£ô Compiled successfully in 29.3s
+#15 32.76   Running TypeScript ...
+#15 45.72   Finished TypeScript in 13.0s ...
+#15 45.73   Collecting page data using 13 workers ...
+#15 48.91   Generating static pages using 13 workers (0/8) ...
+#15 51.06   Generating static pages using 13 workers (2/8) 
+#15 51.11   Generating static pages using 13 workers (4/8) 
+#15 51.11   Generating static pages using 13 workers (6/8) 
+#15 51.11 Γ£ô Generating static pages using 13 workers (8/8) in 2.2s
+#15 51.13   Finalizing page optimization ...
+#15 52.59 
+#15 52.59 Route (app)
+#15 52.59 Γöî Γùï /
+#15 52.59 Γö£ Γùï /_not-found
+#15 52.59 Γö£ Γùï /about
+#15 52.59 Γö£ ╞Æ /admin/[[...segments]]
+#15 52.59 Γö£ ╞Æ /api/[...slug]
+#15 52.59 Γö£ Γùï /contact
+#15 52.59 Γö£ ╞Æ /healthz
+#15 52.59 Γö£ Γùï /robots.txt
+#15 52.59 Γö£ Γùï /sitemap.xml
+#15 52.59 Γö£ Γùï /work
+#15 52.59 Γöö ΓùÅ /work/[slug]
+#15 52.59 
+#15 52.59 
+#15 52.59 Γùï  (Static)   prerendered as static content
+#15 52.59 ΓùÅ  (SSG)      prerendered as static HTML (uses generateStaticParams)
+#15 52.59 ╞Æ  (Dynamic)  server-rendered on demand
+#15 52.59 
+#15 52.79 npm notice
+#15 52.79 npm notice New major version of npm available! 10.8.2 -> 11.17.0
+#15 52.79 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.17.0
+#15 52.79 npm notice To update run: npm install -g npm@11.17.0
+#15 52.79 npm notice
+#15 DONE 52.9s
+
+#16 [runner 5/9] COPY --from=builder /app/public ./public
+#16 DONE 0.1s
+
+#17 [runner 6/9] RUN mkdir .next
+#17 DONE 0.3s
+
+#18 [runner 7/9] RUN chown nextjs:nodejs .next
+#18 DONE 0.5s
+
+#19 [runner 8/9] COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+#19 DONE 0.9s
+
+#20 [runner 9/9] COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+#20 DONE 0.2s
+
+#21 exporting to image
+#21 exporting layers
+#21 exporting layers 3.8s done
+#21 exporting manifest sha256:ecfff0bded69d3b8f5f476f1b45e4fca8bb33470c93263cfeeb5c9b757901181 0.0s done
+#21 exporting config sha256:c2abc4f6861cbf499444823ed31aabf685b203f91b9aaf6c0d469f025ec5000f 0.0s done
+#21 exporting attestation manifest sha256:0dbf2d54e653c96345eed501ee2a726f93e91d57ef568c08984c07d243737b93
+#21 exporting attestation manifest sha256:0dbf2d54e653c96345eed501ee2a726f93e91d57ef568c08984c07d243737b93 0.1s done
+#21 exporting manifest list sha256:d3dd6d8b4836207790bc62237ec02699897818e6e42f082352e64705ecdc745d 0.0s done
+#21 naming to docker.io/library/graphic-designer:verify done
+#21 unpacking to docker.io/library/graphic-designer:verify
+#21 unpacking to docker.io/library/graphic-designer:verify 3.1s done
+#21 DONE 7.2s
