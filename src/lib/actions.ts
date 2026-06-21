@@ -1,11 +1,25 @@
 'use server'
 
 import { EmailClient } from '@azure/communication-email'
+import { headers } from 'next/headers'
 import { contactFormSchema, type ContactFormData } from './validations'
+import { rateLimit } from './rate-limit'
 
 export async function submitContactForm(
   data: ContactFormData,
 ): Promise<{ success: boolean; message: string }> {
+  // Rate limit by client IP: 5 submissions per minute. Defends the email send
+  // path against abuse beyond the honeypot below.
+  const headerList = await headers()
+  const ip =
+    headerList.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    headerList.get('x-real-ip') ||
+    'unknown'
+  const { allowed } = rateLimit(`contact:${ip}`, 5, 60_000)
+  if (!allowed) {
+    return { success: false, message: 'Too many requests. Please try again in a minute.' }
+  }
+
   // Validate with Zod
   const result = contactFormSchema.safeParse(data)
 

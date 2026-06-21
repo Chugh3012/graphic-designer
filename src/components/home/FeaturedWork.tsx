@@ -16,7 +16,15 @@ function getCategoryNames(categories: (number | ProjectCategory)[] | null | unde
     .filter((name): name is string => !!name)
 }
 
-const fallbackProjects = [
+type FeaturedCard = {
+  title: string
+  slug: string
+  heroImage: string
+  categories: string[]
+  company?: string
+}
+
+const fallbackProjects: FeaturedCard[] = [
   {
     title: "Gillette Onsen Japan KV",
     slug: "gillette-onsen-japan-kv",
@@ -48,7 +56,7 @@ const fallbackProjects = [
 ];
 
 export async function FeaturedWork() {
-  let projects = fallbackProjects;
+  let projects: FeaturedCard[] = fallbackProjects;
 
   try {
     const featured = await getFeaturedProjects();

@@ -43,6 +43,10 @@ export default buildConfig({
     pool: {
       connectionString: process.env.DATABASE_URI || '',
     },
+    // In production, schema changes must go through committed migrations
+    // (`payload migrate`). Dev keeps auto-push for fast iteration.
+    push: process.env.NODE_ENV !== 'production',
+    migrationDir: path.resolve(dirname, 'migrations'),
   }),
 
   sharp,

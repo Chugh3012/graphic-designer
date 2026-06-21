@@ -208,33 +208,6 @@ export const Projects: CollectionConfig = {
           'Build the project story using text, images, galleries, and before/after comparisons.',
       },
     },
-    // ── Legacy fields (kept for backward compat) ──
-    {
-      name: 'content',
-      type: 'richText',
-      admin: {
-        description: 'Legacy rich text content. Use Content Sections above for new projects.',
-      },
-    },
-    {
-      name: 'gallery',
-      type: 'array',
-      admin: {
-        description: 'Legacy gallery. Use Content Sections above for new projects.',
-      },
-      fields: [
-        {
-          name: 'image',
-          type: 'upload',
-          relationTo: 'media',
-          required: true,
-        },
-        {
-          name: 'caption',
-          type: 'text',
-        },
-      ],
-    },
     {
       name: 'featured',
       type: 'checkbox',

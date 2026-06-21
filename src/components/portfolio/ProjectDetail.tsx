@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { RichText } from "@payloadcms/richtext-lexical/react";
 import { Container } from "@/components/ui/Container";
 import { ContentBlockRenderer } from "@/components/portfolio/blocks/ContentBlockRenderer";
 import type { Project, Media } from "@/payload-types";
@@ -44,10 +43,6 @@ export function ProjectDetail({ project }: ProjectDetailProps) {
   const keyConsiderations = project.keyConsiderations || [];
   const concept = project.concept || null;
   const contentBlocks = project.contentBlocks || [];
-
-  // Legacy fields fallback
-  const legacyContent = project.content || null;
-  const legacyGallery = project.gallery || [];
 
   // Navigation properties
   const previousProject = (project as ProjectDetailProps["project"] & { previousProject?: { slug: string; title: string } | null }).previousProject || null;
@@ -164,61 +159,6 @@ export function ProjectDetail({ project }: ProjectDetailProps) {
       {/* Dynamic Content Blocks */}
       {contentBlocks.length > 0 && (
         <ContentBlockRenderer blocks={contentBlocks} />
-      )}
-
-      {/* Legacy Rich Content Area (fallback) */}
-      {contentBlocks.length === 0 && legacyContent && (
-        <Container>
-          <div className="py-16 md:py-24 max-w-3xl">
-            <RichText
-              className="font-sans text-base leading-relaxed text-charcoal-light prose prose-headings:font-serif prose-headings:text-charcoal prose-a:text-accent"
-              data={legacyContent}
-            />
-          </div>
-        </Container>
-      )}
-
-      {/* Legacy Image Gallery (fallback) */}
-      {contentBlocks.length === 0 && legacyGallery.length > 0 && (
-        <Container>
-          <div className="pb-16 md:pb-24">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              {legacyGallery.map((item, index) => {
-                const imageUrl = getImageUrl(item.image);
-                const imageAlt = getImageAlt(item.image, `Gallery image ${index + 1}`);
-                const caption = item.caption || "";
-                
-                return (
-                  <div
-                    key={item.id || index}
-                    className={`relative aspect-4/3 bg-cream-dark rounded-sm overflow-hidden ${
-                      index === 0 ? "md:col-span-2 md:aspect-video" : ""
-                    }`}
-                  >
-                    <Image
-                      src={imageUrl}
-                      alt={imageAlt}
-                      fill
-                      sizes={
-                        index === 0
-                          ? "100vw"
-                          : "(max-width: 768px) 100vw, 50vw"
-                      }
-                      className="object-cover"
-                    />
-                    {caption && (
-                      <div className="absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-charcoal/60 to-transparent">
-                        <p className="font-sans text-xs text-cream/90">
-                          {caption}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </Container>
       )}
 
       {/* Next / Previous Navigation */}
