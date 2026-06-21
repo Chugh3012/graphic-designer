@@ -28,10 +28,6 @@ param location string = resourceGroup().location
 @description('Full container image reference to deploy. CI overrides this with the freshly built image; the default is a placeholder for the very first infra deploy.')
 param containerImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
 
-@description('PostgreSQL administrator password (sourced from a CI secret; stored in Key Vault).')
-@secure()
-param postgresPassword string
-
 @description('Payload CMS secret (sourced from a CI secret; stored in Key Vault).')
 @secure()
 param payloadSecret string
@@ -46,8 +42,11 @@ param emailFrom string
 @description('Recipient address for contact-form submissions.')
 param contactEmailTo string
 
-@description('Object ID of the deploying principal, granted Key Vault admin for break-glass access. Leave empty to skip.')
+@description('Object ID of the deploying principal, granted Key Vault admin for break-glass access and set as a Microsoft Entra administrator on PostgreSQL (so migrations can run with an Entra token). Leave empty to skip.')
 param deployerObjectId string = ''
+
+@description('Principal (user/group) name of the deployer, e.g. the UPN. Required when deployerObjectId is set, for the PostgreSQL Entra administrator.')
+param deployerPrincipalName string = ''
 
 var resourcePrefix = '${appName}-${environmentName}'
 var tags = {
@@ -173,8 +172,12 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' =
   }
   properties: {
     version: '16'
-    administratorLogin: 'payloadadmin'
-    administratorLoginPassword: postgresPassword
+    // Passwordless: Microsoft Entra authentication only, no password login.
+    authConfig: {
+      activeDirectoryAuth: 'Enabled'
+      passwordAuth: 'Disabled'
+      tenantId: subscription().tenantId
+    }
     storage: {
       storageSizeGB: 32
       autoGrow: 'Enabled'
@@ -185,6 +188,21 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2024-08-01' =
     }
     highAvailability: { mode: 'Disabled' }
     network: { publicNetworkAccess: 'Enabled' }
+  }
+}
+
+// The deployer as the Microsoft Entra administrator on PostgreSQL. The app's
+// managed identity is added as a database role post-deploy via SQL
+// (pgaadauth_create_principal) — its object id isn't known at template start,
+// so it can't be a resource name here.
+resource postgresAdminDeployer 'Microsoft.DBforPostgreSQL/flexibleServers/administrators@2024-08-01' = if (!empty(deployerObjectId)) {
+  parent: postgresServer
+  name: deployerObjectId
+  dependsOn: [postgresFirewallAzure]
+  properties: {
+    principalName: deployerPrincipalName
+    principalType: 'User'
+    tenantId: subscription().tenantId
   }
 }
 
@@ -238,26 +256,10 @@ resource kvAdmin 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!emp
   }
 }
 
-resource secretDatabaseUri 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
-  parent: keyVault
-  name: 'database-uri'
-  properties: {
-    value: 'postgresql://payloadadmin:${postgresPassword}@${postgresServer.properties.fullyQualifiedDomainName}:5432/${databaseName}?sslmode=require'
-  }
-}
-
 resource secretPayload 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVault
   name: 'payload-secret'
   properties: { value: payloadSecret }
-}
-
-resource secretStorage 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
-  parent: keyVault
-  name: 'storage-connection-string'
-  properties: {
-    value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
-  }
 }
 
 resource secretAcs 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
@@ -296,9 +298,9 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   dependsOn: [
     acrPull
     kvSecretsUser
-    secretDatabaseUri
+    blobContributor
+    postgresAdminDeployer
     secretPayload
-    secretStorage
     secretAcs
   ]
   properties: {
@@ -319,18 +321,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       ]
       secrets: [
         {
-          name: 'database-uri'
-          keyVaultUrl: '${keyVault.properties.vaultUri}secrets/database-uri'
-          identity: uami.id
-        }
-        {
           name: 'payload-secret'
           keyVaultUrl: '${keyVault.properties.vaultUri}secrets/payload-secret'
-          identity: uami.id
-        }
-        {
-          name: 'storage-connection-string'
-          keyVaultUrl: '${keyVault.properties.vaultUri}secrets/storage-connection-string'
           identity: uami.id
         }
         {
@@ -351,12 +343,16 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           }
           env: [
             { name: 'NODE_ENV', value: 'production' }
-            { name: 'DATABASE_URI', secretRef: 'database-uri' }
+            // Passwordless Postgres via Entra token (managed identity)
+            { name: 'AZURE_POSTGRES_HOST', value: postgresServer.properties.fullyQualifiedDomainName }
+            { name: 'AZURE_POSTGRES_USER', value: '${resourcePrefix}-id' }
+            { name: 'AZURE_POSTGRES_DB', value: databaseName }
+            { name: 'AZURE_CLIENT_ID', value: uami.properties.clientId }
             { name: 'PAYLOAD_SECRET', secretRef: 'payload-secret' }
-            { name: 'AZURE_STORAGE_CONNECTION_STRING', secretRef: 'storage-connection-string' }
-            { name: 'AZURE_COMMUNICATION_CONNECTION_STRING', secretRef: 'acs-connection-string' }
+            // Passwordless Blob via managed identity
+            { name: 'AZURE_STORAGE_ACCOUNT_NAME', value: storageAccount.name }
             { name: 'AZURE_STORAGE_CONTAINER_NAME', value: 'portfolio-media' }
-            { name: 'AZURE_CDN_HOSTNAME', value: replace(replace(storageAccount.properties.primaryEndpoints.blob, 'https://', ''), '/', '') }
+            { name: 'AZURE_COMMUNICATION_CONNECTION_STRING', secretRef: 'acs-connection-string' }
             { name: 'EMAIL_FROM', value: emailFrom }
             { name: 'CONTACT_EMAIL_TO', value: contactEmailTo }
             { name: 'NEXT_PUBLIC_SITE_URL', value: 'https://${resourcePrefix}-app.${caeEnv.properties.defaultDomain}' }
