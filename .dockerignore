@@ -1,0 +1,46 @@
+# Keep the Docker build context small and the image clean.
+# Everything the build needs is source + package files; the rest is noise.
+
+# Dependencies & build output (reinstalled/rebuilt inside the image)
+node_modules
+.next
+out
+build
+dist
+
+# VCS & CI
+.git
+.github
+.gitignore
+
+# Large local-only source artifacts (media lives in Blob Storage)
+*.pdf
+pdf-output
+media
+data
+public/images/*.psd
+
+# Local env & secrets
+.env
+.env.*
+!.env.example
+
+# Tests, reports, tooling
+tests
+playwright-report
+test-results
+playwright/.cache
+.lighthouseci
+.playwright-mcp
+lighthouserc.js
+
+# Docs & editor
+*.md
+.vscode
+.idea
+
+# Logs & temp
+*.log
+tmpclaude-*
+tsconfig.tsbuildinfo
+infra
