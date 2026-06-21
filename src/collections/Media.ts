@@ -6,7 +6,9 @@ export const Media: CollectionConfig = {
     read: () => true,
   },
   upload: {
-    staticDir: 'media',
+    // In production this points at the mounted Azure Files volume (set via env);
+    // locally it's a relative ./media directory.
+    staticDir: process.env.MEDIA_DIR || 'media',
     mimeTypes: ['image/*'],
     imageSizes: [
       {
