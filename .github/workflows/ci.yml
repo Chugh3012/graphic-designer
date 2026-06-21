@@ -147,6 +147,7 @@ jobs:
           format: 'table'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
+          trivyignores: '.trivyignore'
 
   # Priority 2: Bundle size analysis
   bundle-size:
