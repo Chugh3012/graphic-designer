@@ -60,3 +60,6 @@ playwright/.cache/
 
 # Bicep build output
 infra/main.json
+
+# Local run logs
+*.log
