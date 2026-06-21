@@ -1,35 +1,70 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 import { ProjectCard } from "@/components/portfolio/ProjectCard";
+import { getFeaturedProjects } from "@/lib/queries";
+import type { Media, ProjectCategory } from "@/payload-types";
 
-const featuredProjects = [
+function getImageUrl(media: number | Media | null | undefined): string {
+  if (!media || typeof media === 'number') return '/images/placeholder-1.svg'
+  return media.url || '/images/placeholder-1.svg'
+}
+
+function getCategoryNames(categories: (number | ProjectCategory)[] | null | undefined): string[] {
+  if (!categories) return []
+  return categories
+    .map((cat) => (typeof cat === 'number' ? null : cat.name))
+    .filter((name): name is string => !!name)
+}
+
+const fallbackProjects = [
   {
-    title: "Botanica Brand Identity",
-    slug: "botanica-brand-identity",
+    title: "Gillette Onsen Japan KV",
+    slug: "gillette-onsen-japan-kv",
     heroImage: "/images/placeholder-1.svg",
-    categories: ["Branding", "Identity"],
+    categories: ["Key Visual"],
+    company: "Landor",
   },
   {
-    title: "Solstice Packaging",
-    slug: "solstice-packaging",
+    title: "Kellogg's Muesli",
+    slug: "kelloggs-muesli",
     heroImage: "/images/placeholder-2.svg",
-    categories: ["Packaging", "Print"],
+    categories: ["Packaging Design"],
+    company: "Dy works",
   },
   {
-    title: "Meridian Studio Rebrand",
-    slug: "meridian-studio-rebrand",
+    title: "Nippo Brand Identity",
+    slug: "nippo",
     heroImage: "/images/placeholder-3.svg",
-    categories: ["Branding", "Identity"],
+    categories: ["Brand Identity"],
+    company: "Dy works",
   },
   {
-    title: "Terre Print Collection",
-    slug: "terre-print-collection",
+    title: "Sugar Free D'lite",
+    slug: "sugar-free-dlite",
     heroImage: "/images/placeholder-4.svg",
-    categories: ["Print", "Packaging"],
+    categories: ["Packaging Design"],
+    company: "Dy works",
   },
 ];
 
-export function FeaturedWork() {
+export async function FeaturedWork() {
+  let projects = fallbackProjects;
+
+  try {
+    const featured = await getFeaturedProjects();
+    if (featured.length > 0) {
+      projects = featured.map((p) => ({
+        title: p.title,
+        slug: p.slug,
+        heroImage: getImageUrl(p.heroImage),
+        categories: getCategoryNames(p.categories),
+        company: p.company ?? undefined,
+      }));
+    }
+  } catch {
+    // CMS unavailable — use fallback
+  }
+
   return (
     <section className="py-24 md:py-32 bg-cream-dark">
       <Container>
@@ -53,13 +88,14 @@ export function FeaturedWork() {
 
         {/* Project Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
-          {featuredProjects.map((project) => (
+          {projects.map((project) => (
             <ProjectCard
               key={project.slug}
               title={project.title}
               slug={project.slug}
               heroImage={project.heroImage}
               categories={project.categories}
+              company={project.company}
             />
           ))}
         </div>

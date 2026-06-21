@@ -7,7 +7,7 @@ export function AboutPreview() {
       <Container>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           {/* Image Placeholder */}
-          <div className="relative aspect-[4/5] bg-cream-dark rounded-sm overflow-hidden">
+          <div className="relative aspect-4/5 bg-cream-dark rounded-sm overflow-hidden">
             <div className="absolute inset-0 flex items-center justify-center">
               <span className="font-sans text-sm text-stone tracking-widest uppercase">
                 Portrait
@@ -24,19 +24,20 @@ export function AboutPreview() {
             <h2 className="font-serif text-4xl md:text-5xl tracking-tight text-charcoal mb-8 leading-tight">
               Designing with
               <br />
-              purpose &amp; care
+              purpose &amp; passion
             </h2>
 
             <div className="space-y-5 mb-10">
               <p className="font-sans text-base leading-relaxed text-charcoal-light">
-                With over a decade of experience in visual design, I partner with
-                brands who value craftsmanship and intentionality. Every project
-                begins with understanding your story and ends with a design system
-                that feels unmistakably yours.
+                I&apos;m a graphic designer with a focus on packaging and branding,
+                passionate about creating designs that are visually striking,
+                meaningful, and built to connect. I believe great design brings
+                stories to life and helps brands leave a lasting impression.
               </p>
               <p className="font-sans text-base leading-relaxed text-charcoal-light">
-                My approach blends strategic thinking with an eye for detail,
-                creating identities that are both timeless and distinct.
+                Most recently at Landor, I contributed to global brands like
+                Gillette and Braun — designing packaging, digital campaigns,
+                and key visuals selected for worldwide use.
               </p>
             </div>
 

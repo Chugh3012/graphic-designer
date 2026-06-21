@@ -52,10 +52,12 @@ export default buildConfig({
       ? [
           azureStorage({
             collections: {
-              media: true,
+              media: {
+                disablePayloadAccessControl: true,
+              },
             },
-            allowContainerCreate: true,
-            baseURL: `https://${process.env.AZURE_CDN_HOSTNAME || 'localhost'}/${process.env.AZURE_STORAGE_CONTAINER_NAME || 'media'}`,
+            allowContainerCreate: false,
+            baseURL: `https://${process.env.AZURE_CDN_HOSTNAME || 'localhost'}`,
             connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING,
             containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || 'media',
           }),

@@ -4,63 +4,94 @@ import { useState, useMemo } from "react";
 import { Container } from "@/components/ui/Container";
 import { ProjectCard } from "@/components/portfolio/ProjectCard";
 
-const categories = ["All", "Branding", "Packaging", "Print", "Identity"];
+interface ProjectData {
+  title: string;
+  slug: string;
+  heroImage: string;
+  categories: string[];
+  company?: string;
+}
 
-const placeholderProjects = [
+interface ProjectGridProps {
+  projects?: ProjectData[];
+  categories?: string[];
+}
+
+const fallbackProjects: ProjectData[] = [
   {
-    title: "Botanica Brand Identity",
-    slug: "botanica-brand-identity",
+    title: "Gillette Onsen Japan KV",
+    slug: "gillette-onsen-japan-kv",
     heroImage: "/images/placeholder-1.svg",
-    categories: ["Branding", "Identity"],
+    categories: ["Key Visual"],
+    company: "Landor",
   },
   {
-    title: "Solstice Packaging",
-    slug: "solstice-packaging",
+    title: "Braun E-content",
+    slug: "braun-e-content",
     heroImage: "/images/placeholder-2.svg",
-    categories: ["Packaging", "Print"],
+    categories: ["E-commerce Content"],
+    company: "Landor",
   },
   {
-    title: "Meridian Studio Rebrand",
-    slug: "meridian-studio-rebrand",
+    title: "Kellogg's Muesli",
+    slug: "kelloggs-muesli",
     heroImage: "/images/placeholder-3.svg",
-    categories: ["Branding", "Identity"],
+    categories: ["Packaging Design"],
+    company: "Dy works",
   },
   {
-    title: "Terre Print Collection",
-    slug: "terre-print-collection",
+    title: "Nippo Brand Identity",
+    slug: "nippo",
     heroImage: "/images/placeholder-4.svg",
-    categories: ["Print", "Packaging"],
+    categories: ["Brand Identity"],
+    company: "Dy works",
   },
   {
-    title: "Lumiere Visual Identity",
-    slug: "lumiere-visual-identity",
+    title: "Sugar Free D'lite",
+    slug: "sugar-free-dlite",
     heroImage: "/images/placeholder-5.jpg",
-    categories: ["Branding", "Identity"],
+    categories: ["Packaging Design"],
+    company: "Dy works",
   },
   {
-    title: "Nomad Packaging System",
-    slug: "nomad-packaging-system",
+    title: "Vizylac",
+    slug: "vizylac",
     heroImage: "/images/placeholder-6.jpg",
-    categories: ["Packaging"],
+    categories: ["Packaging Design"],
+    company: "Dy works",
   },
 ];
 
-export function ProjectGrid() {
+const fallbackCategories = [
+  "All",
+  "Packaging Design",
+  "Brand Identity",
+  "Key Visual",
+  "E-commerce Content",
+  "Banner Design",
+  "Illustration",
+  "Photography",
+];
+
+export function ProjectGrid({ projects, categories }: ProjectGridProps) {
+  const displayProjects = projects && projects.length > 0 ? projects : fallbackProjects;
+  const displayCategories = categories && categories.length > 0 ? ["All", ...categories] : fallbackCategories;
+
   const [activeFilter, setActiveFilter] = useState("All");
 
   const filteredProjects = useMemo(() => {
-    if (activeFilter === "All") return placeholderProjects;
-    return placeholderProjects.filter((project) =>
+    if (activeFilter === "All") return displayProjects;
+    return displayProjects.filter((project) =>
       project.categories.includes(activeFilter)
     );
-  }, [activeFilter]);
+  }, [activeFilter, displayProjects]);
 
   return (
     <section className="py-24 md:py-32 bg-cream">
       <Container>
         {/* Category Filter Bar */}
         <div className="flex flex-wrap items-center gap-2 mb-16 pb-6 border-b border-stone-light/30">
-          {categories.map((category) => (
+          {displayCategories.map((category) => (
             <button
               key={category}
               type="button"
@@ -85,6 +116,7 @@ export function ProjectGrid() {
               slug={project.slug}
               heroImage={project.heroImage}
               categories={project.categories}
+              company={project.company}
             />
           ))}
         </div>

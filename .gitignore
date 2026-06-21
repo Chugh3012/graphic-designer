@@ -39,6 +39,17 @@ media/
 # Temp files
 tmpclaude-*
 
+# Large source artifacts (kept locally, not in repo — media lives in Blob Storage)
+*.pdf
+pdf-output/
+data/
+
+# Playwright MCP debug logs
+.playwright-mcp/
+
+# Build info
+tsconfig.tsbuildinfo
+
 # Playwright
 test-results/
 playwright-report/

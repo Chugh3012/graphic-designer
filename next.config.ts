@@ -38,6 +38,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '*.azureedge.net',
       },
+      {
+        protocol: 'https',
+        hostname: '*.azurefd.net',
+      },
     ],
   },
 }

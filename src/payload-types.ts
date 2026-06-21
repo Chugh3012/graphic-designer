@@ -138,6 +138,13 @@ export interface Project {
   slug: string;
   heroImage: number | Media;
   categories?: (number | ProjectCategory)[] | null;
+  /**
+   * The agency or company this project was done at (e.g. Landor, Dy works)
+   */
+  company?: string | null;
+  /**
+   * The brand or client this project was for (e.g. Gillette, Kellogg's)
+   */
   client?: string | null;
   year?: number | null;
   services?:
@@ -146,7 +153,90 @@ export interface Project {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Short summary for project cards and SEO.
+   */
   summary?: string | null;
+  /**
+   * The design brief / objective for this project.
+   */
+  brief?: string | null;
+  /**
+   * Numbered list of key considerations from the brief.
+   */
+  keyConsiderations?:
+    | {
+        consideration: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * The design concept or creative approach narrative.
+   */
+  concept?: string | null;
+  /**
+   * Build the project story using text, images, galleries, and before/after comparisons.
+   */
+  contentBlocks?:
+    | (
+        | {
+            heading?: string | null;
+            body?: {
+              root: {
+                type: string;
+                children: {
+                  type: any;
+                  version: number;
+                  [k: string]: unknown;
+                }[];
+                direction: ('ltr' | 'rtl') | null;
+                format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+                indent: number;
+                version: number;
+              };
+              [k: string]: unknown;
+            } | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'textBlock';
+          }
+        | {
+            image: number | Media;
+            caption?: string | null;
+            size?: ('full' | 'medium' | 'small') | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'imageBlock';
+          }
+        | {
+            heading?: string | null;
+            images?:
+              | {
+                  image: number | Media;
+                  caption?: string | null;
+                  id?: string | null;
+                }[]
+              | null;
+            columns?: ('2' | '3' | '4') | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'galleryBlock';
+          }
+        | {
+            heading?: string | null;
+            beforeImage: number | Media;
+            afterImage: number | Media;
+            beforeLabel?: string | null;
+            afterLabel?: string | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'beforeAfterBlock';
+          }
+      )[]
+    | null;
+  /**
+   * Legacy rich text content. Use Content Sections above for new projects.
+   */
   content?: {
     root: {
       type: string;
@@ -162,6 +252,9 @@ export interface Project {
     };
     [k: string]: unknown;
   } | null;
+  /**
+   * Legacy gallery. Use Content Sections above for new projects.
+   */
   gallery?:
     | {
         image: number | Media;
@@ -352,6 +445,7 @@ export interface ProjectsSelect<T extends boolean = true> {
   slug?: T;
   heroImage?: T;
   categories?: T;
+  company?: T;
   client?: T;
   year?: T;
   services?:
@@ -361,6 +455,61 @@ export interface ProjectsSelect<T extends boolean = true> {
         id?: T;
       };
   summary?: T;
+  brief?: T;
+  keyConsiderations?:
+    | T
+    | {
+        consideration?: T;
+        id?: T;
+      };
+  concept?: T;
+  contentBlocks?:
+    | T
+    | {
+        textBlock?:
+          | T
+          | {
+              heading?: T;
+              body?: T;
+              id?: T;
+              blockName?: T;
+            };
+        imageBlock?:
+          | T
+          | {
+              image?: T;
+              caption?: T;
+              size?: T;
+              id?: T;
+              blockName?: T;
+            };
+        galleryBlock?:
+          | T
+          | {
+              heading?: T;
+              images?:
+                | T
+                | {
+                    image?: T;
+                    caption?: T;
+                    id?: T;
+                  };
+              columns?: T;
+              id?: T;
+              blockName?: T;
+            };
+        beforeAfterBlock?:
+          | T
+          | {
+              heading?: T;
+              beforeImage?: T;
+              afterImage?: T;
+              beforeLabel?: T;
+              afterLabel?: T;
+              id?: T;
+              blockName?: T;
+            };
+      };
   content?: T;
   gallery?:
     | T

@@ -45,6 +45,7 @@
     "@types/node": "^25.2.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "dotenv": "^17.3.1",
     "eslint": "^9.39.2",
     "eslint-config-next": "16.2.0-canary.46",
     "postcss": "^8.0.0",
