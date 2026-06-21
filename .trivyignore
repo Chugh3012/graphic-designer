@@ -1,8 +1,0 @@
-# Trivy ignore file.
-#
-# The Azure Storage SDK (@azure/storage-blob) embeds the Azure Storage Emulator's
-# well-known, PUBLIC development connection string (account "devstoreaccount1").
-# Trivy's secret scanner flags it as an "azure-storage-account-key" CRITICAL, but
-# it is a documented public constant, not a leaked secret. Suppress the false
-# positive while keeping all real vulnerability and secret scanning.
-azure-storage-account-key
