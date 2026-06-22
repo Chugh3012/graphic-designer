@@ -1,5 +1,5 @@
 # Stage 1: Install dependencies
-FROM node:22-alpine AS deps
+FROM node:26-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
@@ -7,7 +7,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci
 
 # Stage 2: Build the application
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -18,13 +18,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # Stage: download the Litestream binary (static Go binary — runs on Alpine/musl).
-FROM alpine:3.20 AS litestream
+FROM alpine:3.24 AS litestream
 RUN apk add --no-cache curl \
  && curl -fsSL https://github.com/benbjohnson/litestream/releases/download/v0.5.12/litestream-0.5.12-linux-x86_64.tar.gz \
     | tar -xz -C /usr/local/bin
 
 # Stage 3: Production runner
-FROM node:22-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
