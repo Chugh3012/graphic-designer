@@ -15,6 +15,8 @@ import { Navigation } from '@/globals/Navigation'
 import { Footer } from '@/globals/Footer'
 import { HomePage } from '@/globals/HomePage'
 
+import { migrations } from './migrations'
+
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
@@ -44,14 +46,15 @@ export default buildConfig({
       // at the SQLite file on the mounted Azure Files volume (set via env).
       url: process.env.DATABASE_URI || 'file:./data/portfolio.db',
     },
-    // Single-instance SQLite portfolio: auto-sync the schema on boot. The DB
-    // file lives on a mounted volume only reachable from inside the container,
-    // so a separate `payload migrate` step isn't practical; push keeps the
-    // (single-writer) schema in step with the config. Migrations are still
-    // committed for reference.
-    // ponytail: push can drop columns on a destructive change. For a risky
-    // schema change, run `payload migrate` against the volume instead.
+    // Dev: `push` auto-syncs the schema on save. Production: `push` is ignored
+    // by Payload, so the committed migrations are run automatically on boot via
+    // `prodMigrations` (single replica / single writer, so no migration race).
+    // The migrations array is statically imported, so it survives the Next
+    // standalone bundle where the migrationDir files are not copied.
+    // ponytail: a destructive schema change still needs a hand-written migration;
+    // generate it with `payload migrate:create` in dev.
     push: true,
+    prodMigrations: migrations,
     migrationDir: path.resolve(dirname, 'migrations'),
   }),
 
