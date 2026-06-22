@@ -1,0 +1,9 @@
+# Trivy suppressions — each entry is a deliberate, risk-assessed exception.
+#
+# These two HIGH CVEs live inside the third-party Litestream v0.5.12 binary
+# (its bundled Go stdlib + OpenTelemetry lib), which we pin and cannot rebuild.
+# Litestream runs as an internal backup sidecar: it does not parse untrusted
+# MIME input and does not export OTLP telemetry, so neither CVE is reachable in
+# this deployment. Remove these when Litestream publishes a build on Go >=1.25.11.
+CVE-2026-42504
+CVE-2026-29181

@@ -64,6 +64,7 @@ jobs:
           severity: CRITICAL,HIGH
           exit-code: '1'
           scanners: vuln
+          trivyignores: .trivyignore
 
       - name: Azure login (OIDC)
         uses: azure/login@v2
