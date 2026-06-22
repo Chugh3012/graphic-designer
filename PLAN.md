@@ -3,80 +3,82 @@
 > North-star document. Re-read when drifting. Update in place as decisions evolve.
 
 A portfolio + freelance-services site for a branding & packaging designer. Starts
-simple (portfolio + contact), architected to grow.
+simple (portfolio + contact), architected to grow — with the **simplest correct
+tooling**: a static site backed by a git-based CMS, hosted free.
 
 ## Stack
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Framework | Next.js 16 (App Router, TS) | SSR/ISR for SEO |
-| CMS | PayloadCMS 3 | Lives inside Next — single deploy; admin at `/admin` |
-| Database | **SQLite** (`@payloadcms/db-sqlite`, libSQL) | A file — no DB server. Schema auto-synced on boot. |
+| Framework | Next.js 16 (App Router, TS) | Static pages + a tiny managed backend |
+| CMS | **Keystatic** (git-based) | Content = files in this repo. No DB, no server. Admin at `/keystatic`. |
+| Content format | JSON + Markdoc under `content/` | Read at build time via Keystatic's `createReader` |
+| Images | Files under `public/images/` | Served directly; `images.unoptimized` (no sharp at runtime) |
 | Styling | Tailwind CSS 4 | |
 | Animation | Framer Motion 12 | |
-| Email | Azure Communication Email | Contact form (server action) |
-| Forms | React Hook Form + Zod 4 | Client + server validation |
-| Media | Local filesystem (`MEDIA_DIR`) | On the mounted volume in production |
-| Hosting | Azure Container Apps | Scale-to-zero, **max 1 replica**, free monthly grant |
-| Persistence | Azure Files share | Holds the SQLite DB **and** media uploads |
-| Registry | GitHub Container Registry (ghcr.io) | Free |
-| Secrets | Azure Key Vault (free tier) | `PAYLOAD_SECRET` + email string, read via managed identity |
-| CI/CD | GitHub Actions (OIDC) | No stored SP secret |
-| Telemetry | Application Insights (free tier) | Production only |
+| Email | Azure Communication Email | Contact form (server action), optional |
+| Forms | React Hook Form + Zod 4 | Client + server validation, honeypot, rate-limit |
+| Hosting | **Azure Static Web Apps (Free)** | Static pages + managed backend for SSR routes |
+| CI/CD | GitHub Actions | `ci.yml` (PR gate) + `deploy.yml` (SWA token) |
 
-**Target cost: ~$0/month.** No managed database, no container registry fees, no
-Blob; Container Apps stays within the free grant when scaled to zero.
+**Target cost: ~$0/month.** No database, storage account, Key Vault, container
+registry, or Container App — content lives in git, hosting is the SWA Free tier.
 
 ## Architecture
 
 ```
-GitHub Actions
-  ├─ infra.yml (manual)      → Bicep → Azure resources
-  └─ deploy-production.yml   → ghcr.io build/push → containerapp update → /healthz
-                                   │
-Azure Container Apps (scale 0→1, single replica)
-  ├─ image ← ghcr.io (public)
-  ├─ secrets ← Key Vault (managed identity)
-  └─ volume  ← Azure Files share  →  /app/.data/portfolio.db (SQLite)
-                                     /app/.data/media         (uploads)
+GitHub (content + code in one repo)
+  └─ push master ─► deploy.yml ─► Azure/static-web-apps-deploy (token)
+                                     │ Oryx: npm install + npm run build
+                                     ▼
+Azure Static Web Apps (Free)
+  ├─ static pages      ← Keystatic reader renders content/ at build time
+  ├─ managed backend   ← contact server action + /api/keystatic admin API
+  └─ /keystatic admin  ← GitHub storage mode (commits to repo) once App is set
 ```
 
 Single source of truth for infra: [infra/main.bicep](infra/main.bicep).
+Deploy runbook + app settings: [infra/README.md](infra/README.md).
 
-## Content model (Payload)
+## Content model (Keystatic — `keystatic.config.ts`)
 
-- **Projects** — title, slug (auto), heroImage, categories, company, client, year,
-  services[], summary, brief, keyConsiderations[], concept, `contentBlocks` (Text /
-  Image / Gallery / BeforeAfter), featured, sortOrder, status (draft/published), SEO.
-- **ProjectCategories**, **Media**, **Users**. Globals: SiteSettings, Navigation,
-  Footer, HomePage.
+- **projects** (`content/projects/*.json`) — title (slug), status, featured,
+  sortOrder, heroImage, categories[], company, client, year, services[], summary,
+  brief, concept, keyConsiderations[], gallery[{image, caption}], seo.
+- **categories** (`content/categories/*.json`).
+- Singletons: **siteSettings**, **homePage**, **about** (`content/settings/*`).
 
-Frontend queries live in [src/lib/queries.ts](src/lib/queries.ts) (typed via
-generated `payload-types`). Always filter `status: 'published'`.
+Frontend queries live in [src/lib/queries.ts](src/lib/queries.ts) — they wrap
+`createReader` and return normalized, mutable shapes (`ProjectSummary` /
+`ProjectFull`) so components never touch the CMS schema directly.
+
+## Editing content
+
+- **Local**: `npm run dev`, edit at `/keystatic` (local storage mode), commit.
+- **Hosted**: once the GitHub App env vars are set on the SWA (see infra/README),
+  the live `/keystatic` admin commits straight to the repo, which re-triggers a
+  deploy. Storage mode is gated on `KEYSTATIC_GITHUB_CLIENT_ID` being present.
 
 ## Security posture
 
-- Passwordless pipeline: **GitHub OIDC** to Azure; `GITHUB_TOKEN` to ghcr.io.
-- App secrets (`PAYLOAD_SECRET`, email string) live in **Key Vault**, read by the
-  app's **managed identity** — none in the repo or pipeline.
-- SQLite has no network credential; the only key is the storage-account key used by
-  the Container Apps Azure Files mount (in the managed-environment config, not the repo).
-- Contact form: Zod validation + honeypot + per-IP rate limiting.
+- No app secrets in the repo. Deploy uses a scoped SWA **deployment token** (repo
+  secret), not cloud credentials.
+- Contact form: Zod validation + honeypot + per-IP rate limiting. Email is disabled
+  until `AZURE_COMMUNICATION_CONNECTION_STRING` + sender are set in SWA app settings.
+- Security headers (CSP, HSTS, X-Frame-Options, …) set in `next.config.ts`.
 - Dependencies kept patched (`npm audit --audit-level=high` is a CI gate).
 
 ## Known ceilings / future work (ponytail notes)
 
-- **SQLite on SMB (Azure Files)** → single writer, so the app runs at **max 1
-  replica**. Fine for a read-heavy portfolio. Upgrade path: Turso (libSQL, free)
-  or a managed Postgres if write concurrency is ever needed.
-- **Schema push on boot** can drop columns on a destructive change. For a risky
-  change, run `payload migrate` against the volume instead (migrations committed).
-- **Media served via the Node app** (no CDN). Add Azure Front Door / a CDN if
-  global edge caching is needed.
-- **Payload admin email**: no adapter wired → admin password-reset mail goes to
-  logs. Add an email adapter before relying on self-service reset.
+- **SWA hybrid Next.js is in preview** (250 MB app cap). Fine for this site.
+  If it regresses, fall back to a static export (drop the server routes) or move
+  the SSR bits to a small Function App.
+- **Free tier = no managed identity**, so the ACS email connection string is a
+  stored app setting. Upgrade path for passwordless: SWA Standard + user-assigned
+  identity, or send mail from a Function App with MI.
+- **No custom domain yet** — add one on the SWA (free managed cert) when ready.
 
-## Branch protection (required, set in GitHub UI)
+## Branch protection (set in GitHub UI)
 
-`master` should require the CI workflow (lint, type-check, unit tests, e2e, docker
-build + scan) to pass via PR. Direct pushes to `master` trigger deploy.
+`master` should require `ci.yml` (lint, type-check, unit tests, audit) on PRs.
+Pushes to `master` trigger the SWA deploy.

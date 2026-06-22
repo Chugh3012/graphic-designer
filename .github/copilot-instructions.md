@@ -2,169 +2,102 @@
 
 ## Project Overview
 
-A portfolio website for a graphic designer built with Next.js 15 and PayloadCMS 3. The site allows the designer to independently manage projects, categories, and media through the CMS admin panel.
+A portfolio website for a graphic designer built with **Next.js 16** and **Keystatic**
+(a git-based CMS). Content lives as files in this repo — no database, no CMS server.
+The site is hosted on **Azure Static Web Apps (Free)** and costs ~$0/month.
 
-**Tech Stack:** Next.js 15 (App Router), PayloadCMS 3, PostgreSQL, TypeScript, Tailwind CSS 4, Azure Blob Storage + CDN, Resend (email), React Hook Form + Zod
+**Tech Stack:** Next.js 16 (App Router), Keystatic + Markdoc, TypeScript, Tailwind
+CSS 4, Azure Static Web Apps, Azure Communication Email (contact form), React Hook
+Form + Zod.
 
 ## Commands
 
 ```bash
-# Development
-npm run dev                  # Start Next.js dev server (http://localhost:3000)
-docker-compose up -d         # Start PostgreSQL database (port 5433)
-
-# Build & Deploy
-npm run build                # Production build (generates standalone output)
-npm start                    # Run production server
-docker build -t graphic-designer .  # Build Docker image
-
-# Code Quality
-npm run lint                 # Run ESLint with Next.js TypeScript config
-
-# Testing
-npm run test:e2e             # Run Playwright E2E tests in headless mode
-npm run test:e2e:ui          # Run tests with Playwright UI (interactive)
-npm run test:e2e:headed      # Run tests in headed browser (visible)
-npm run test:e2e:debug       # Run tests in debug mode with Playwright Inspector
-
-# PayloadCMS
-npm run generate:types       # Generate TypeScript types from Payload config → src/payload-types.ts
-npm run generate:importmap   # Generate import map for Payload admin UI
+npm run dev            # Dev server + Keystatic admin (http://localhost:3000, /keystatic)
+npm run build          # Production build (static pages + managed backend)
+npm start              # Run production server
+npm run lint           # ESLint
+npm run typecheck      # tsc --noEmit
+npm run test:unit      # Unit tests (tsx --test tests/unit/*.test.ts)
+npm run migrate:content # One-off: regenerate content/ from scripts/portfolio-data.ts
 ```
 
-**Running single tests:** 
-- ESLint: `npx eslint <file-path>`
-- Single test file: `npx playwright test tests/e2e/contact-form.spec.ts`
-- Single test: `npx playwright test -g "should display contact form"`
+There is no database, no Docker, no Payload, no sharp at runtime (`images.unoptimized`).
 
 ## Architecture
 
-### Route Structure (Next.js 15 App Router)
+### Routes (`src/app/`)
 
-- **`src/app/(frontend)/`** - Public-facing portfolio site
-  - Routes: `/` (home), `/work` (projects), `/work/[slug]` (project detail), `/about`, `/contact`
-- **`src/app/(payload)/`** - PayloadCMS admin panel
-  - Accessible at `/admin` after running migrations and creating a user
+- `(frontend)/` — public site: `/` (home), `/work`, `/work/[slug]`, `/about`, `/contact`.
+- `keystatic/` + `api/keystatic/` — the Keystatic admin UI + its API (server runtime).
 
-### PayloadCMS Collections & Globals
+### Content (Keystatic — `keystatic.config.ts`)
 
-**Collections** (multiple entries):
-- `projects` - Portfolio projects with title, slug, hero image, categories, gallery, client, year, services, rich text content, featured flag, status (draft/published), sortOrder
-- `project-categories` - Category taxonomy for organizing projects
-- `media` - Image uploads with automatic sizing (thumbnail: 400px, card: 768px, hero: 1920px). Stored in Azure Blob Storage when configured, otherwise local `media/` directory
-- `users` - Admin users for CMS access
+Content is files, edited at `/keystatic`:
 
-**Globals** (site-wide singletons):
-- `site-settings` - Site metadata, SEO defaults
-- `navigation` - Main site navigation structure
-- `footer` - Footer content and links
-- `home-page` - Home page hero content and featured work configuration
+- **projects** — `content/projects/*.json`: title (slug), status, featured,
+  sortOrder, heroImage, categories[], company, client, year, services[], summary,
+  brief, concept, keyConsiderations[], gallery[{image, caption}], seo.
+- **categories** — `content/categories/*.json`.
+- Singletons — **siteSettings**, **homePage**, **about** under `content/settings/`.
 
-### Data Fetching Pattern
+Images live under `public/images/projects/` (referenced by public path).
 
-- **Server-side queries:** Use `src/lib/queries.ts` functions (e.g., `getPublishedProjects()`, `getProjectBySlug()`)
-- **Get Payload client:** Import `getPayloadClient()` from `src/lib/payload.ts`
-- All queries use `await getPayloadClient()` then `payload.find()` or `payload.findGlobal()`
-- Example: Projects are sorted by `sortOrder` (asc) then `createdAt` (desc)
+### Data fetching
 
-### Server Actions
+- All reads go through [src/lib/queries.ts](src/lib/queries.ts), which wraps
+  Keystatic's `createReader(process.cwd(), config)`.
+- Queries return **normalized, mutable** shapes — `ProjectSummary` (list/card) and
+  `ProjectFull` (detail) — with `heroImage`/gallery already resolved to URL strings
+  and `categories` already a `string[]`. Components consume these directly; they do
+  **not** import any CMS types.
+- Rendered at build time → static pages. Always treat `status: 'published'` as the
+  visible filter and `featured` for homepage selection.
 
-- **Contact form:** `src/lib/actions.ts` contains `submitContactForm()` which validates with Zod, checks honeypot field (`website`), and sends email via Resend
-- All server actions marked with `'use server'` directive
+### Server actions
 
-## Key Conventions
+- Contact form: [src/lib/actions.ts](src/lib/actions.ts) (`'use server'`) — Zod
+  validation, honeypot (`website` field), per-IP rate limit, sends via Azure
+  Communication Email. Runs on the SWA managed backend. Email is disabled unless
+  `AZURE_COMMUNICATION_CONNECTION_STRING`, `EMAIL_FROM`, `CONTACT_EMAIL_TO` are set.
 
-### Slug Generation
-Projects use auto-generated slugs from titles via `beforeValidate` hook:
-- Lowercase, trim whitespace, replace spaces with hyphens, remove special characters
-- Can be manually overridden in admin panel (sidebar field)
+## Key conventions
 
-### Media & Images
-- Always set `alt` text (required field in Media collection)
-- Use relationship fields (`type: 'upload', relationTo: 'media'`) for all image references
-- Azure CDN hostname configured via `AZURE_CDN_HOSTNAME` environment variable
-- Media URLs automatically resolved to CDN when Azure Storage is configured
+- **Keystatic storage mode** is env-gated in `keystatic.config.ts`: GitHub mode when
+  `KEYSTATIC_GITHUB_CLIENT_ID` is present (hosted admin commits to the repo), else
+  local mode (dev/build). Never make the build require the GitHub App secrets.
+- **Images**: `images.unoptimized` is on — use `next/image` freely; no sharp.
+- **Styling**: Tailwind CSS 4 utilities; `cn()` in [src/lib/utils.ts](src/lib/utils.ts).
+  Custom theme tokens (cream, charcoal, stone, …). No CSS files except
+  `src/app/globals.css`.
+- **Forms**: React Hook Form + Zod schemas in [src/lib/validations.ts](src/lib/validations.ts).
+- **Security headers** (CSP/HSTS/etc.) live in `next.config.ts`.
 
-### Form Validation
-- All forms use React Hook Form + `@hookform/resolvers` with Zod schemas
-- Schemas defined in `src/lib/validations.ts`
-- Contact form includes honeypot field (`website`) - must remain empty (max length 0)
+## Deploy & infra
 
-### Status & Publishing
-- Projects have `status` field: `'draft'` or `'published'`
-- Always filter by `status: 'published'` in frontend queries
-- Use `featured` checkbox flag to highlight selected projects on homepage
+- Hosting is one Bicep file: [infra/main.bicep](infra/main.bicep) (a Static Web App,
+  Free tier). Runbook + app settings: [infra/README.md](infra/README.md).
+- CI/CD: [.github/workflows/ci.yml](.github/workflows/ci.yml) (PR gate) and
+  [.github/workflows/deploy.yml](.github/workflows/deploy.yml) (push to `master` →
+  `Azure/static-web-apps-deploy` via a scoped deployment token). Oryx builds with
+  `npm install` (not `npm ci`). Node is pinned to `22.x` (SWA supports 18/20/22).
 
-### Styling
-- Tailwind CSS 4 utility classes throughout
-- Helper function: `cn()` in `src/lib/utils.ts` for conditional class merging
-- No custom CSS files except `src/app/globals.css` for base styles
+## Common tasks
 
-### Type Generation
-After modifying PayloadCMS collections/globals, run `npm run generate:types` to update `src/payload-types.ts`. This ensures type safety across the application.
+**Add a content field:** edit the relevant collection/singleton in
+`keystatic.config.ts`, then surface it through `src/lib/queries.ts`
+(`ProjectSummary`/`ProjectFull`) so components stay decoupled from the schema.
 
-## Environment Variables
+**Add a page:** create a folder under `src/app/(frontend)/`, add a Server Component
+`page.tsx`, fetch via `src/lib/queries.ts`.
 
-Required in `.env` (see `.env.example`):
-```
-DATABASE_URI                      # PostgreSQL connection string (dev: port 5433)
-PAYLOAD_SECRET                    # JWT secret (generate with: openssl rand -hex 32)
-AZURE_STORAGE_CONNECTION_STRING   # Optional: Azure Blob Storage
-AZURE_STORAGE_CONTAINER_NAME      # Optional: Container name (default: portfolio-media)
-AZURE_CDN_HOSTNAME                # Optional: CDN hostname for media URLs
-RESEND_API_KEY                    # For contact form emails
-CONTACT_EMAIL_TO                  # Email recipient for contact form submissions
-NEXT_PUBLIC_SITE_URL              # Base site URL (dev: http://localhost:3000)
-```
-
-## Docker
-
-Multi-stage Dockerfile optimized for Next.js standalone output:
-1. **deps stage:** Install dependencies with `npm ci`
-2. **builder stage:** Build Next.js application
-3. **runner stage:** Production image (Node 20 Alpine, runs as non-root user `nextjs`)
-
-Exposes port 3000, runs `node server.js` from `.next/standalone/`
-
-## Common Tasks
-
-**Adding a new collection:**
-1. Create `src/collections/YourCollection.ts` with `CollectionConfig`
-2. Import and add to `collections` array in `src/payload.config.ts`
-3. Run `npm run generate:types` to update TypeScript types
-4. Restart dev server to apply changes
-
-**Querying PayloadCMS from frontend:**
-1. Add query function in `src/lib/queries.ts`
-2. Use `await getPayloadClient()` then `payload.find()` or `payload.findGlobal()`
-3. Call from Server Components (Next.js App Router default)
-4. Type queries with generated types from `src/payload-types.ts`
-
-**Adding a new page:**
-1. Create folder in `src/app/(frontend)/your-page/`
-2. Add `page.tsx` (Server Component by default)
-3. Import layout components from `src/components/layout/`
-4. Update Navigation global in PayloadCMS admin if adding to menu
+**Change hosting/infra:** edit `infra/main.bicep` (IaC is the source of truth — don't
+configure via ad-hoc `az` as the record).
 
 ## Testing
 
-### E2E Tests with Playwright
-
-Tests are located in `tests/e2e/` directory. Key test files:
-- `homepage.spec.ts` - Homepage navigation and featured work display
-- `contact-form.spec.ts` - Contact form validation and submission
-- `projects.spec.ts` - Project listing, filtering, and detail pages
-
-**Writing new tests:**
-- Use `page.getByRole()`, `page.getByLabel()`, and `page.getByText()` for accessibility-first selectors
-- Add `data-testid` attributes to components only when semantic selectors aren't sufficient
-- Tests automatically start dev server on port 3000 before running
-- All tests use Chromium browser by default (configured in `playwright.config.ts`)
-
-**Debugging tests:**
-- Use `npm run test:e2e:ui` for interactive mode with time-travel debugging
-- Use `npm run test:e2e:debug` to step through tests with Playwright Inspector
-- Add `await page.pause()` in test code to stop at specific points
+Unit tests in `tests/unit/` run via `npm run test:unit` (Node's built-in test runner
+through `tsx`). E2E is ad hoc — there is no committed Playwright suite.
 
 # Ponytail, lazy senior dev mode
 
