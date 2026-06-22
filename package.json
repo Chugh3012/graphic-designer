@@ -29,7 +29,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "framer-motion": "^12.34.0",
     "graphql": "^16.0.0",
-    "next": "15.4.11",
+    "next": "16.2.9",
     "payload": "3.76.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
