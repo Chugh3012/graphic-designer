@@ -1,14 +1,21 @@
 import { config, fields, collection, singleton } from '@keystatic/core'
 
 // Git-based CMS. Content lives as files in this repo (no database, no server).
-// Local mode for dev; switch `storage` to GitHub mode for the hosted admin.
+// Storage mode is gated on the GitHub App env vars: when they're present (set in
+// the SWA app settings after creating the App), the hosted admin at /keystatic
+// commits straight to the repo and re-triggers deploy; otherwise it falls back to
+// local mode (dev, and any build before the App is configured). The reader
+// (createReader) always reads the committed files locally at build time, so this
+// only affects where the admin UI writes.
 // Images are co-located under public/ so they're served directly by the CDN.
 
 const projectImageDir = 'public/images/projects'
 const projectImagePublic = '/images/projects'
 
 export default config({
-  storage: { kind: 'local' },
+  storage: process.env.KEYSTATIC_GITHUB_CLIENT_ID
+    ? { kind: 'github', repo: { owner: 'Chugh3012', name: 'graphic-designer' } }
+    : { kind: 'local' },
 
   collections: {
     projects: collection({

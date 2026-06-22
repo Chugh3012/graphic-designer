@@ -1,0 +1,40 @@
+name: Deploy to Azure Static Web Apps
+
+# Builds the hybrid Next.js site and deploys it to Azure Static Web Apps (Free).
+# Oryx runs `npm install` + `npm run build`, then publishes the static pages plus
+# the managed backend (contact server action + Keystatic admin API). Auth is a
+# scoped SWA deployment token (repo secret) — no cloud credentials.
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - '**.md'
+      - '.vscode/**'
+      - 'pdf-output/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: swa-deploy
+  cancel-in-progress: true
+
+jobs:
+  build_and_deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: "/"
+          api_location: ""
+          output_location: ""
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL }}
