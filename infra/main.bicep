@@ -60,9 +60,11 @@ var storageAccountName = toLower(take('${replace(appName, '-', '')}${uniqueSuffi
 var keyVaultName = toLower(take('${replace(appName, '-', '')}kv${uniqueSuffix}', 24))
 var fileShareName = 'appdata'
 var mountPath = '/app/.data'
+var litestreamContainerName = 'litestream'
 
 var kvSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
 var kvAdminRoleId = '00482a5a-887f-4fb3-b363-3b7fe8e74483'
+var storageBlobDataContributorRoleId = 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
 
 // ── Observability (free tier) ────────────────────────────────────────────────
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
@@ -119,6 +121,31 @@ resource fileShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2023-0
   properties: {
     shareQuota: 16
     enabledProtocols: 'SMB'
+  }
+}
+
+// ── Blob container for Litestream SQLite replication ─────────────────────────
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = {
+  parent: storageAccount
+  name: 'default'
+}
+
+resource litestreamContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = {
+  parent: blobService
+  name: litestreamContainerName
+  properties: {
+    publicAccess: 'None'
+  }
+}
+
+// The app's managed identity replicates the SQLite DB to Blob passwordlessly.
+resource blobDataContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageAccount.id, uami.id, storageBlobDataContributorRoleId)
+  scope: storageAccount
+  properties: {
+    principalId: uami.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageBlobDataContributorRoleId)
   }
 }
 
@@ -214,6 +241,8 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
     secretPayload
     secretAcs
     caeStorage
+    litestreamContainer
+    blobDataContributor
   ]
   properties: {
     managedEnvironmentId: caeEnv.id
@@ -255,9 +284,14 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           ]
           env: [
             { name: 'NODE_ENV', value: 'production' }
-            // SQLite database file + media uploads live on the mounted Azure Files share.
-            { name: 'DATABASE_URI', value: 'file:${mountPath}/portfolio.db' }
+            // SQLite runs on LOCAL disk (/data); Litestream replicates it to Blob.
+            // Media uploads stay on the Azure Files share (plain writes are fine there).
+            { name: 'DATABASE_URI', value: 'file:/data/portfolio.db' }
             { name: 'MEDIA_DIR', value: '${mountPath}/media' }
+            // Litestream → Azure Blob, passwordless via the user-assigned identity.
+            { name: 'LITESTREAM_AZURE_ACCOUNT_NAME', value: storageAccount.name }
+            { name: 'LITESTREAM_AZURE_BUCKET', value: litestreamContainerName }
+            { name: 'AZURE_CLIENT_ID', value: uami.properties.clientId }
             { name: 'PAYLOAD_SECRET', secretRef: 'payload-secret' }
             { name: 'AZURE_COMMUNICATION_CONNECTION_STRING', secretRef: 'acs-connection-string' }
             { name: 'EMAIL_FROM', value: emailFrom }
@@ -283,10 +317,12 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         }
       ]
       scale: {
-        // Single writer for SQLite-on-SMB. Scales to zero when idle (free grant).
+        // Single writer (Litestream requires one). Scales to zero when idle (free grant).
         minReplicas: 0
         maxReplicas: 1
       }
+      // Give Litestream time to flush a final sync to Blob on shutdown.
+      terminationGracePeriodSeconds: 30
     }
   }
 }

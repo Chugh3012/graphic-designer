@@ -56,6 +56,11 @@ export default buildConfig({
     push: true,
     prodMigrations: migrations,
     migrationDir: path.resolve(dirname, 'migrations'),
+    // WAL mode is required by Litestream (prod runs the DB on local disk and
+    // streams it to Azure Blob). busyTimeout rides over brief lock contention
+    // while Litestream checkpoints.
+    wal: true,
+    busyTimeout: 5000,
   }),
 
   sharp,

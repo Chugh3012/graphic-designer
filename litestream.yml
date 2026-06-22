@@ -1,0 +1,17 @@
+# Litestream: stream the local SQLite DB to Azure Blob Storage for durability.
+#
+# Auth is passwordless — Litestream v0.5+ uses the container app's managed
+# identity (Azure SDK default credential chain; AZURE_CLIENT_ID selects the
+# user-assigned identity). No account key. The identity needs the
+# "Storage Blob Data Contributor" role on the storage account.
+#
+# The DB lives on LOCAL container disk (/data), never on the Azure Files SMB
+# mount — SMB breaks SQLite's file locking. Litestream restores it on boot and
+# replicates every change to Blob, so it survives scale-to-zero restarts.
+dbs:
+  - path: /data/portfolio.db
+    replicas:
+      - type: abs
+        account-name: ${LITESTREAM_AZURE_ACCOUNT_NAME}
+        bucket: ${LITESTREAM_AZURE_BUCKET}
+        path: portfolio.db
