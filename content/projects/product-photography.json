@@ -1,0 +1,48 @@
+{
+  "title": "Product Photography",
+  "status": "published",
+  "featured": false,
+  "sortOrder": 13,
+  "heroImage": "13-photography-page-91-img-05.jpeg",
+  "categories": [
+    "photography"
+  ],
+  "company": "Personal",
+  "client": "Moi soi, Urban Platter, Smoor, Fabelle",
+  "year": 2023,
+  "services": [
+    "Product Photography",
+    "Food Photography",
+    "Styling"
+  ],
+  "summary": "Product and food photography for premium brands — Moi soi, Urban Platter, Smoor and Fabelle. Clean, appetite-driven imagery that elevates each brand.",
+  "brief": "",
+  "concept": "",
+  "keyConsiderations": [],
+  "gallery": [
+    {
+      "image": "13-photography-page-91-img-01.jpeg",
+      "caption": "Moi soi product shot"
+    },
+    {
+      "image": "13-photography-page-91-img-02.jpeg",
+      "caption": "Urban Platter product shot"
+    },
+    {
+      "image": "13-photography-page-91-img-03.jpeg",
+      "caption": "Smoor product shot"
+    },
+    {
+      "image": "13-photography-page-91-img-04.jpeg",
+      "caption": "Fabelle product shot"
+    },
+    {
+      "image": "13-photography-page-91-img-06.jpeg",
+      "caption": "Product styling shot"
+    }
+  ],
+  "seo": {
+    "metaTitle": "",
+    "metaDescription": "Product and food photography for premium brands — Moi soi, Urban Platter, Smoor and Fabelle. Clean, appetite-driven imagery that elevates each brand."
+  }
+}

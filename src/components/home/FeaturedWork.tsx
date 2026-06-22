@@ -2,19 +2,6 @@ import Link from "next/link";
 import { Container } from "@/components/ui/Container";
 import { ProjectCard } from "@/components/portfolio/ProjectCard";
 import { getFeaturedProjects } from "@/lib/queries";
-import type { Media, ProjectCategory } from "@/payload-types";
-
-function getImageUrl(media: number | Media | null | undefined): string {
-  if (!media || typeof media === 'number') return '/images/placeholder-1.svg'
-  return media.url || '/images/placeholder-1.svg'
-}
-
-function getCategoryNames(categories: (number | ProjectCategory)[] | null | undefined): string[] {
-  if (!categories) return []
-  return categories
-    .map((cat) => (typeof cat === 'number' ? null : cat.name))
-    .filter((name): name is string => !!name)
-}
 
 type FeaturedCard = {
   title: string
@@ -61,13 +48,7 @@ export async function FeaturedWork() {
   try {
     const featured = await getFeaturedProjects();
     if (featured.length > 0) {
-      projects = featured.map((p) => ({
-        title: p.title,
-        slug: p.slug,
-        heroImage: getImageUrl(p.heroImage),
-        categories: getCategoryNames(p.categories),
-        company: p.company ?? undefined,
-      }));
+      projects = featured.map((p) => ({ ...p, company: p.company || undefined }));
     }
   } catch {
     // CMS unavailable — use fallback

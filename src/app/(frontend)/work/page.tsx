@@ -1,25 +1,10 @@
 import type { Metadata } from 'next'
 import { getPublishedProjects, getProjectCategories } from '@/lib/queries'
 import { ProjectGrid } from '@/components/portfolio/ProjectGrid'
-import type { Media, ProjectCategory } from '@/payload-types'
 
 export const metadata: Metadata = {
   title: 'Work',
   description: 'Explore our portfolio of packaging, branding, and visual design projects.',
-}
-
-function getImageUrl(media: number | Media | null | undefined): string {
-  if (!media || typeof media === 'number') return '/images/placeholder-1.svg'
-  return media.url || '/images/placeholder-1.svg'
-}
-
-function getCategoryNames(
-  categories: (number | ProjectCategory)[] | null | undefined
-): string[] {
-  if (!categories) return []
-  return categories
-    .map((cat) => (typeof cat === 'number' ? null : cat.name))
-    .filter((name): name is string => !!name)
 }
 
 export default async function WorkPage() {
@@ -32,15 +17,8 @@ export default async function WorkPage() {
       getProjectCategories(),
     ])
 
-    projects = rawProjects.map((p) => ({
-      title: p.title,
-      slug: p.slug,
-      heroImage: getImageUrl(p.heroImage),
-      categories: getCategoryNames(p.categories),
-      company: p.company ?? undefined,
-    }))
-
-    categoryNames = rawCategories.map((c: { name: string }) => c.name)
+    projects = rawProjects.map((p) => ({ ...p, company: p.company || undefined }))
+    categoryNames = rawCategories
   } catch {
     // CMS unavailable – fall through to fallback data in ProjectGrid
   }

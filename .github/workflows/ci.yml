@@ -1,10 +1,8 @@
 name: CI
 
-# Deliberately lean to conserve Actions minutes (private repo = every minute is
-# billed). Two jobs, each with a single `npm ci` (was nine jobs / eight installs
-# and Next.js rebuilt 3-4x per run). The Docker image build + Trivy scan live in
-# the deploy workflow, which already builds the image — rebuilding it on every PR
-# push was pure waste. Docs-only changes skip CI entirely.
+# Lean PR gate (billed minutes). One job: lint, types, unit tests, security
+# audit. The full build + deploy live in deploy.yml. Docs-only changes skip CI.
+# E2E is run ad hoc when a change warrants it.
 
 on:
   pull_request:
@@ -22,8 +20,6 @@ permissions:
   contents: read
 
 env:
-  DATABASE_URI: file:./portfolio.db
-  PAYLOAD_SECRET: ci-test-secret-not-for-production-use-only
   NEXT_PUBLIC_SITE_URL: http://localhost:3000
 
 jobs:
@@ -42,35 +38,6 @@ jobs:
       - name: Lint
         run: npm run lint
       - name: Type check
-        run: npx tsc --noEmit
+        run: npm run typecheck
       - name: Unit tests
         run: npm run test:unit
-
-  e2e:
-    name: E2E (Playwright)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - name: Install Playwright (chromium)
-        run: npx playwright install --with-deps chromium
-      - name: Run E2E tests
-        run: npm run test:e2e
-        env:
-          CI: true
-      - name: Upload report
-        uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 7

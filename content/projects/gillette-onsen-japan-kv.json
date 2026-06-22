@@ -1,0 +1,61 @@
+{
+  "title": "Gillette Onsen Japan KV",
+  "status": "published",
+  "featured": true,
+  "sortOrder": 1,
+  "heroImage": "01-gillette-onsen-japan-kv-page-06-img-02.jpeg",
+  "categories": [
+    "key-visual"
+  ],
+  "company": "Landor",
+  "client": "Gillette",
+  "year": 2024,
+  "services": [
+    "Key Visual Design",
+    "Art Direction",
+    "AI Exploration"
+  ],
+  "summary": "Key Visual design for the Gillette Onsen Body Grooming Razor launch in Japan, blending Japanese bathing culture with modern grooming aesthetics.",
+  "brief": "Develop a compelling Key Visual for the Gillette Onsen Body Grooming Razor launch in Japan. The KV should resonate with Japanese consumers by blending the cultural significance of the Onsen bathing tradition with Gillette's modern grooming technology.",
+  "concept": "The concept explores the intersection of traditional Japanese bathing rituals and modern grooming. AI-generated explorations were created to visualize the Onsen atmosphere — steam, warm water, natural stone — paired with the razor in a lifestyle setting that feels aspirational yet authentic.",
+  "keyConsiderations": [
+    "Communicate body grooming as part of the broader Japanese grooming & bathing culture",
+    "Position the Onsen razor as premium yet approachable, emphasizing comfort and safety",
+    "Incorporate visual cues that evoke the Onsen experience — warm tones, steam, natural textures",
+    "Ensure global brand consistency while being culturally relevant to the Japanese market"
+  ],
+  "gallery": [
+    {
+      "image": "01-gillette-onsen-japan-kv-page-05-img-02.jpeg",
+      "caption": "Onsen AI exploration 1"
+    },
+    {
+      "image": "01-gillette-onsen-japan-kv-page-06-img-01.jpeg",
+      "caption": "Onsen AI exploration 2"
+    },
+    {
+      "image": "01-gillette-onsen-japan-kv-page-06-img-03.jpeg",
+      "caption": "Onsen AI exploration 3"
+    },
+    {
+      "image": "01-gillette-onsen-japan-kv-page-07-img-01.jpeg",
+      "caption": "Gillette Onsen final KV 1"
+    },
+    {
+      "image": "01-gillette-onsen-japan-kv-page-07-img-02.jpeg",
+      "caption": "Gillette Onsen final KV 2"
+    },
+    {
+      "image": "01-gillette-onsen-japan-kv-page-07-img-03.jpeg",
+      "caption": "Gillette Onsen final KV 3"
+    },
+    {
+      "image": "01-gillette-onsen-japan-kv-page-07-img-04.jpeg",
+      "caption": "Gillette Onsen final KV 4"
+    }
+  ],
+  "seo": {
+    "metaTitle": "",
+    "metaDescription": "Key Visual design for the Gillette Onsen Body Grooming Razor launch in Japan, blending Japanese bathing culture with modern grooming aesthetics."
+  }
+}

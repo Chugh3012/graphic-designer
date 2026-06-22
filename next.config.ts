@@ -1,46 +1,22 @@
-import { withPayload } from '@payloadcms/next/withPayload'
 import type { NextConfig } from 'next'
 
+const csp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "frame-ancestors 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "object-src 'none'",
+].join('; ')
+
 const nextConfig: NextConfig = {
-  output: 'standalone',
-  serverExternalPackages: [
-    '@azure/monitor-opentelemetry',
-    '@opentelemetry/sdk-node',
-    '@opentelemetry/instrumentation',
-  ],
-  async rewrites() {
-    return [
-      {
-        source: '/images/placeholder-1.jpg',
-        destination: '/images/placeholder-1.svg',
-      },
-      {
-        source: '/images/placeholder-2.jpg',
-        destination: '/images/placeholder-2.svg',
-      },
-      {
-        source: '/images/placeholder-3.jpg',
-        destination: '/images/placeholder-3.svg',
-      },
-      {
-        source: '/images/placeholder-4.jpg',
-        destination: '/images/placeholder-4.svg',
-      },
-    ]
-  },
+  // Images are pre-sized and served straight from the CDN — no sharp/optimizer.
+  images: { unoptimized: true },
   async headers() {
-    const csp = [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
-      "connect-src 'self'",
-      "frame-ancestors 'self'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "object-src 'none'",
-    ].join('; ')
     return [
       {
         source: '/:path*',
@@ -57,4 +33,4 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default withPayload(nextConfig)
+export default nextConfig

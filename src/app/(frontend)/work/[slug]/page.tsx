@@ -24,8 +24,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!project) return {}
 
   return {
-    title: project.seo?.metaTitle || project.title,
-    description: project.seo?.metaDescription || project.summary,
+    title: project.metaTitle,
+    description: project.metaDescription,
   }
 }
 

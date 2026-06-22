@@ -1,0 +1,133 @@
+{
+  "title": "Kellogg's Muesli",
+  "status": "published",
+  "featured": true,
+  "sortOrder": 4,
+  "heroImage": "04-kelloggs-muesli-page-18-img-01.jpeg",
+  "categories": [
+    "packaging-design"
+  ],
+  "company": "Dy works",
+  "client": "Kellogg's",
+  "year": 2023,
+  "services": [
+    "Packaging Redesign",
+    "Brand Strategy",
+    "Structural Design"
+  ],
+  "summary": "Complete packaging redesign for Kellogg's Muesli range with a farm-to-table breakfast concept emphasizing fresh, natural ingredients.",
+  "brief": "Redesign the Kellogg's Muesli packaging to reposition the brand as a premium, natural breakfast choice. The new design should communicate freshness, wholesomeness, and the quality of ingredients.",
+  "concept": "Farm-to-table breakfast concept. The design centers on lush, overflowing imagery of real ingredients — nuts, fruits, grains — spilling naturally across the pack face, creating an abundant and appetizing visual. The colour palette shifts to earthy, warm tones that reinforce the natural positioning.",
+  "keyConsiderations": [
+    "Communicate natural, farm-fresh positioning through visual language",
+    "Create a modular system that works across multiple SKUs and flavour variants",
+    "Stand out on shelf against competitors while maintaining Kellogg's brand equity",
+    "Ensure clear hierarchy: brand → sub-brand → flavour → nutritional claims"
+  ],
+  "gallery": [
+    {
+      "image": "04-kelloggs-muesli-page-19-img-01.jpeg",
+      "caption": "Kellogg's Muesli concept board"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-20-img-01.jpeg",
+      "caption": "Muesli pack element 1"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-20-img-02.jpeg",
+      "caption": "Muesli ingredient closeup"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-20-img-03.jpeg",
+      "caption": "Muesli ingredient 2"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-20-img-04.jpeg",
+      "caption": "Muesli ingredient 3"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-20-img-05.jpeg",
+      "caption": "Muesli pack detail"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-20-img-06.jpeg",
+      "caption": "Muesli ingredient detail"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-20-img-07.jpeg",
+      "caption": "Muesli pack element 2"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-20-img-08.jpeg",
+      "caption": "Muesli pack element 3"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-21-img-01.jpeg",
+      "caption": "Kellogg's Muesli previous FOP"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-21-img-02.jpeg",
+      "caption": "Kellogg's Muesli current FOP"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-21-img-03.jpeg",
+      "caption": "Kellogg's Muesli previous BOP"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-21-img-04.jpeg",
+      "caption": "Kellogg's Muesli current BOP"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-22-img-01.jpeg",
+      "caption": "Muesli final pack 1"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-22-img-02.jpeg",
+      "caption": "Muesli final pack 2"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-23-img-01.jpeg",
+      "caption": "Muesli final pack 3"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-23-img-02.jpeg",
+      "caption": "Muesli final pack lineup"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-23-img-03.jpeg",
+      "caption": "Muesli final pack side"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-24-img-01.jpeg",
+      "caption": "Muesli shelf mockup"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-24-img-02.jpeg",
+      "caption": "Muesli pack render 1"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-24-img-03.jpeg",
+      "caption": "Muesli pack render 2"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-25-img-01.jpeg",
+      "caption": "Muesli pack lifestyle"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-26-img-01.jpeg",
+      "caption": "Muesli banner design 1"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-26-img-02.jpeg",
+      "caption": "Muesli banner design 2"
+    },
+    {
+      "image": "04-kelloggs-muesli-page-26-img-03.jpeg",
+      "caption": "Muesli banner design 3"
+    }
+  ],
+  "seo": {
+    "metaTitle": "",
+    "metaDescription": "Complete packaging redesign for Kellogg's Muesli range with a farm-to-table breakfast concept emphasizing fresh, natural ingredients."
+  }
+}
