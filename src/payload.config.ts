@@ -1,9 +1,8 @@
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { buildConfig } from 'payload'
-import { postgresAdapter } from '@payloadcms/db-postgres'
+import { sqliteAdapter } from '@payloadcms/db-sqlite'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
-import { azureStorage } from '@payloadcms/storage-azure'
 import sharp from 'sharp'
 
 import { Projects } from '@/collections/Projects'
@@ -39,27 +38,22 @@ export default buildConfig({
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
 
-  db: postgresAdapter({
-    pool: {
-      connectionString: process.env.DATABASE_URI || '',
+  db: sqliteAdapter({
+    client: {
+      // libSQL URL. Local dev defaults to a file in ./data; production points
+      // at the SQLite file on the mounted Azure Files volume (set via env).
+      url: process.env.DATABASE_URI || 'file:./data/portfolio.db',
     },
+    // Single-instance SQLite portfolio: auto-sync the schema on boot. The DB
+    // file lives on a mounted volume only reachable from inside the container,
+    // so a separate `payload migrate` step isn't practical; push keeps the
+    // (single-writer) schema in step with the config. Migrations are still
+    // committed for reference.
+    // ponytail: push can drop columns on a destructive change. For a risky
+    // schema change, run `payload migrate` against the volume instead.
+    push: true,
+    migrationDir: path.resolve(dirname, 'migrations'),
   }),
 
   sharp,
-
-  plugins: [
-    ...(process.env.AZURE_STORAGE_CONNECTION_STRING
-      ? [
-          azureStorage({
-            collections: {
-              media: true,
-            },
-            allowContainerCreate: true,
-            baseURL: `https://${process.env.AZURE_CDN_HOSTNAME || 'localhost'}/${process.env.AZURE_STORAGE_CONTAINER_NAME || 'media'}`,
-            connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING,
-            containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || 'media',
-          }),
-        ]
-      : []),
-  ],
 })

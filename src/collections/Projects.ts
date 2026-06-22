@@ -1,4 +1,4 @@
-import type { CollectionConfig } from 'payload'
+import type { Block, CollectionConfig } from 'payload'
 
 const formatSlug = (val: string): string =>
   val
@@ -7,11 +7,82 @@ const formatSlug = (val: string): string =>
     .replace(/ /g, '-')
     .replace(/[^\w-]+/g, '')
 
+/* ── Content Block definitions ────────────────────────────── */
+
+const TextBlock: Block = {
+  slug: 'textBlock',
+  labels: { singular: 'Text Section', plural: 'Text Sections' },
+  fields: [
+    { name: 'heading', type: 'text', label: 'Section Heading' },
+    { name: 'body', type: 'richText', label: 'Body Text' },
+  ],
+}
+
+const ImageBlock: Block = {
+  slug: 'imageBlock',
+  labels: { singular: 'Image', plural: 'Images' },
+  fields: [
+    { name: 'image', type: 'upload', relationTo: 'media', required: true },
+    { name: 'caption', type: 'text' },
+    {
+      name: 'size',
+      type: 'select',
+      defaultValue: 'full',
+      options: [
+        { label: 'Full Width', value: 'full' },
+        { label: 'Medium', value: 'medium' },
+        { label: 'Small', value: 'small' },
+      ],
+    },
+  ],
+}
+
+const GalleryBlock: Block = {
+  slug: 'galleryBlock',
+  labels: { singular: 'Gallery', plural: 'Galleries' },
+  fields: [
+    { name: 'heading', type: 'text', label: 'Section Heading' },
+    {
+      name: 'images',
+      type: 'array',
+      minRows: 1,
+      fields: [
+        { name: 'image', type: 'upload', relationTo: 'media', required: true },
+        { name: 'caption', type: 'text' },
+      ],
+    },
+    {
+      name: 'columns',
+      type: 'select',
+      defaultValue: '2',
+      options: [
+        { label: '2 Columns', value: '2' },
+        { label: '3 Columns', value: '3' },
+        { label: '4 Columns', value: '4' },
+      ],
+    },
+  ],
+}
+
+const BeforeAfterBlock: Block = {
+  slug: 'beforeAfterBlock',
+  labels: { singular: 'Before / After', plural: 'Before / After' },
+  fields: [
+    { name: 'heading', type: 'text', label: 'Section Heading' },
+    { name: 'beforeImage', type: 'upload', relationTo: 'media', required: true },
+    { name: 'afterImage', type: 'upload', relationTo: 'media', required: true },
+    { name: 'beforeLabel', type: 'text', defaultValue: 'Before' },
+    { name: 'afterLabel', type: 'text', defaultValue: 'After' },
+  ],
+}
+
+/* ── Projects collection ──────────────────────────────────── */
+
 export const Projects: CollectionConfig = {
   slug: 'projects',
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', 'categories', 'status', 'featured'],
+    defaultColumns: ['title', 'company', 'client', 'categories', 'status', 'featured'],
   },
   access: {
     read: () => true,
@@ -57,8 +128,20 @@ export const Projects: CollectionConfig = {
       hasMany: true,
     },
     {
+      name: 'company',
+      type: 'text',
+      label: 'Agency / Company',
+      admin: {
+        description: 'The agency or company this project was done at (e.g. Landor, Dy works)',
+      },
+    },
+    {
       name: 'client',
       type: 'text',
+      label: 'Client / Brand',
+      admin: {
+        description: 'The brand or client this project was for (e.g. Gillette, Kellogg\'s)',
+      },
     },
     {
       name: 'year',
@@ -77,26 +160,53 @@ export const Projects: CollectionConfig = {
     {
       name: 'summary',
       type: 'textarea',
+      admin: {
+        description: 'Short summary for project cards and SEO.',
+      },
+    },
+    // ── Brief section ──
+    {
+      name: 'brief',
+      type: 'textarea',
+      label: 'Project Brief',
+      admin: {
+        description: 'The design brief / objective for this project.',
+      },
     },
     {
-      name: 'content',
-      type: 'richText',
-    },
-    {
-      name: 'gallery',
+      name: 'keyConsiderations',
       type: 'array',
+      label: 'Key Considerations',
+      admin: {
+        description: 'Numbered list of key considerations from the brief.',
+      },
       fields: [
         {
-          name: 'image',
-          type: 'upload',
-          relationTo: 'media',
+          name: 'consideration',
+          type: 'text',
           required: true,
         },
-        {
-          name: 'caption',
-          type: 'text',
-        },
       ],
+    },
+    // ── Concept / Process ──
+    {
+      name: 'concept',
+      type: 'textarea',
+      label: 'Concept / Design Approach',
+      admin: {
+        description: 'The design concept or creative approach narrative.',
+      },
+    },
+    // ── Flexible content blocks ──
+    {
+      name: 'contentBlocks',
+      type: 'blocks',
+      label: 'Content Sections',
+      blocks: [TextBlock, ImageBlock, GalleryBlock, BeforeAfterBlock],
+      admin: {
+        description:
+          'Build the project story using text, images, galleries, and before/after comparisons.',
+      },
     },
     {
       name: 'featured',

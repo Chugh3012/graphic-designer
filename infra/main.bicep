@@ -1,207 +1,80 @@
-// Azure Infrastructure as Code for Graphic Designer Portfolio
-// Deploy to West Europe region
+// ─────────────────────────────────────────────────────────────────────────────
+// Graphic Designer Portfolio — Azure infrastructure (single source of truth)
+//
+// Minimal, ~$0/month topology:
+//   • Azure Container Apps  — scale-to-zero, max 1 replica, inside the free grant
+//   • Azure Files share     — holds the SQLite database file AND media uploads
+//   • Key Vault             — PAYLOAD_SECRET + email connection string (MI-read)
+//   • Log Analytics + App Insights (free tier)
+//
+// No managed database, no container registry (images come from ghcr.io), no Blob.
+// The app's managed identity reads secrets from Key Vault; the deploy pipeline
+// uses GitHub OIDC. The only unavoidable key is the storage-account key used by
+// the Container Apps Azure Files mount (held in the managed-environment config,
+// never in the repo).
+//
+// ponytail: SQLite lives on an SMB (Azure Files) share, so the app runs at a
+// single writer — minReplicas 0, maxReplicas 1. Fine for a read-heavy portfolio
+// with one admin. Upgrade path if write concurrency is ever needed: Turso
+// (libSQL, free) or a managed Postgres.
+// ─────────────────────────────────────────────────────────────────────────────
 
-@description('Environment name (e.g., production, staging)')
-param environmentName string = 'production'
-
-@description('Azure region for all resources')
-param location string = 'westeurope'
-
-@description('Application name (used for resource naming)')
+@description('Application name used for resource naming.')
 param appName string = 'graphic-designer'
 
-@description('PostgreSQL administrator password')
-@secure()
-param postgresPassword string
+@description('Environment name (e.g. production, staging).')
+param environmentName string = 'production'
 
-@description('Payload CMS secret key')
+@description('Azure region for all resources.')
+param location string = resourceGroup().location
+
+@description('Full container image reference to deploy (e.g. ghcr.io/owner/graphic-designer:sha). The default placeholder is used for the first infra deploy; CI overrides it.')
+param containerImage string = 'mcr.microsoft.com/k8se/quickstart:latest'
+
+@description('Payload CMS secret (openssl rand -hex 32). Stored in Key Vault.')
 @secure()
 param payloadSecret string
 
-@description('Resend API key for email')
+@description('Azure Communication Services connection string for the contact-form email. Stored in Key Vault. Leave empty to disable email.')
 @secure()
-param resendApiKey string
+param acsConnectionString string = ''
 
-@description('Contact email recipient')
-param contactEmailTo string
+@description('Verified sender address for Azure Communication Email.')
+param emailFrom string = 'DoNotReply@example.com'
+
+@description('Recipient address for contact-form submissions.')
+param contactEmailTo string = ''
+
+@description('Object ID of the deploying principal, granted Key Vault admin for break-glass access. Leave empty to skip.')
+param deployerObjectId string = ''
 
 var resourcePrefix = '${appName}-${environmentName}'
 var tags = {
-  environment: environmentName
   application: appName
+  environment: environmentName
   managedBy: 'bicep'
 }
 
-// Container Registry
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-07-01' = {
-  name: replace('${resourcePrefix}acr', '-', '')
+var uniqueSuffix = uniqueString(resourceGroup().id, resourcePrefix)
+var storageAccountName = toLower(take('${replace(appName, '-', '')}${uniqueSuffix}', 24))
+var keyVaultName = toLower(take('${replace(appName, '-', '')}kv${uniqueSuffix}', 24))
+var fileShareName = 'appdata'
+var mountPath = '/app/.data'
+
+var kvSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'
+var kvAdminRoleId = '00482a5a-887f-4fb3-b363-3b7fe8e74483'
+
+// ── Observability (free tier) ────────────────────────────────────────────────
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+  name: '${resourcePrefix}-logs'
   location: location
   tags: tags
-  sku: {
-    name: 'Basic'
-  }
   properties: {
-    adminUserEnabled: true
-    publicNetworkAccess: 'Enabled'
+    sku: { name: 'PerGB2018' }
+    retentionInDays: 30
   }
 }
 
-// Storage Account for media/images
-resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
-  name: replace('${resourcePrefix}storage', '-', '')
-  location: location
-  tags: tags
-  sku: {
-    name: 'Standard_LRS'
-  }
-  kind: 'StorageV2'
-  properties: {
-    accessTier: 'Hot'
-    allowBlobPublicAccess: false
-    supportsHttpsTrafficOnly: true
-    minimumTlsVersion: 'TLS1_2'
-  }
-}
-
-// Blob container for portfolio media
-resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
-  parent: storageAccount
-  name: 'default'
-}
-
-resource mediaContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
-  parent: blobService
-  name: 'portfolio-media'
-  properties: {
-    publicAccess: 'None'
-  }
-}
-
-// CDN Profile
-resource cdnProfile 'Microsoft.Cdn/profiles@2023-05-01' = {
-  name: '${resourcePrefix}-cdn'
-  location: 'Global'
-  tags: tags
-  sku: {
-    name: 'Standard_Microsoft'
-  }
-}
-
-// CDN Endpoint for blob storage
-resource cdnEndpoint 'Microsoft.Cdn/profiles/endpoints@2023-05-01' = {
-  parent: cdnProfile
-  name: '${resourcePrefix}-media'
-  location: 'Global'
-  tags: tags
-  properties: {
-    originHostHeader: storageAccount.properties.primaryEndpoints.blob
-    isHttpAllowed: false
-    isHttpsAllowed: true
-    queryStringCachingBehavior: 'IgnoreQueryString'
-    contentTypesToCompress: [
-      'image/jpeg'
-      'image/png'
-      'image/webp'
-      'image/svg+xml'
-    ]
-    isCompressionEnabled: true
-    origins: [
-      {
-        name: 'blob-origin'
-        properties: {
-          hostName: replace(replace(storageAccount.properties.primaryEndpoints.blob, 'https://', ''), '/', '')
-          httpPort: 80
-          httpsPort: 443
-          originHostHeader: replace(replace(storageAccount.properties.primaryEndpoints.blob, 'https://', ''), '/', '')
-        }
-      }
-    ]
-    deliveryPolicy: {
-      rules: [
-        {
-          name: 'CacheImages'
-          order: 1
-          conditions: [
-            {
-              name: 'UrlFileExtension'
-              parameters: {
-                typeName: 'DeliveryRuleUrlFileExtensionMatchConditionParameters'
-                operator: 'Equal'
-                matchValues: [
-                  'jpg'
-                  'jpeg'
-                  'png'
-                  'webp'
-                  'gif'
-                  'svg'
-                ]
-              }
-            }
-          ]
-          actions: [
-            {
-              name: 'CacheExpiration'
-              parameters: {
-                typeName: 'DeliveryRuleCacheExpirationActionParameters'
-                cacheBehavior: 'SetIfMissing'
-                cacheType: 'All'
-                cacheDuration: '7.00:00:00' // 7 days
-              }
-            }
-          ]
-        }
-      ]
-    }
-  }
-}
-
-// PostgreSQL Flexible Server
-resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-03-01-preview' = {
-  name: '${resourcePrefix}-postgres'
-  location: location
-  tags: tags
-  sku: {
-    name: 'Standard_B1ms'
-    tier: 'Burstable'
-  }
-  properties: {
-    version: '16'
-    administratorLogin: 'payloadadmin'
-    administratorLoginPassword: postgresPassword
-    storage: {
-      storageSizeGB: 32
-      autoGrow: 'Enabled'
-    }
-    backup: {
-      backupRetentionDays: 7
-      geoRedundantBackup: 'Disabled'
-    }
-    highAvailability: {
-      mode: 'Disabled'
-    }
-    network: {
-      publicNetworkAccess: 'Enabled'
-    }
-  }
-}
-
-// PostgreSQL Database
-resource postgresDatabase 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-03-01-preview' = {
-  parent: postgresServer
-  name: 'graphic_designer'
-}
-
-// PostgreSQL Firewall Rule - Allow Azure Services
-resource postgresFirewallAzure 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2023-03-01-preview' = {
-  parent: postgresServer
-  name: 'AllowAzureServices'
-  properties: {
-    startIpAddress: '0.0.0.0'
-    endIpAddress: '0.0.0.0'
-  }
-}
-
-// Application Insights
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   name: '${resourcePrefix}-insights'
   location: location
@@ -209,120 +82,220 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   kind: 'web'
   properties: {
     Application_Type: 'web'
+    WorkspaceResourceId: logAnalytics.id
     RetentionInDays: 90
-    publicNetworkAccessForIngestion: 'Enabled'
-    publicNetworkAccessForQuery: 'Enabled'
   }
 }
 
-// Log Analytics Workspace for App Insights
-resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
-  name: '${resourcePrefix}-logs'
+// ── Identity (used to read Key Vault secrets) ────────────────────────────────
+resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: '${resourcePrefix}-id'
+  location: location
+  tags: tags
+}
+
+// ── Storage account + file share (SQLite DB + media uploads) ─────────────────
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' = {
+  name: storageAccountName
+  location: location
+  tags: tags
+  sku: { name: 'Standard_LRS' }
+  kind: 'StorageV2'
+  properties: {
+    allowBlobPublicAccess: false
+    supportsHttpsTrafficOnly: true
+    minimumTlsVersion: 'TLS1_2'
+  }
+}
+
+resource fileService 'Microsoft.Storage/storageAccounts/fileServices@2023-05-01' = {
+  parent: storageAccount
+  name: 'default'
+}
+
+resource fileShare 'Microsoft.Storage/storageAccounts/fileServices/shares@2023-05-01' = {
+  parent: fileService
+  name: fileShareName
+  properties: {
+    shareQuota: 16
+    enabledProtocols: 'SMB'
+  }
+}
+
+// ── Key Vault (RBAC) ─────────────────────────────────────────────────────────
+resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
+  name: keyVaultName
   location: location
   tags: tags
   properties: {
-    sku: {
-      name: 'PerGB2018'
+    sku: { family: 'A', name: 'standard' }
+    tenantId: subscription().tenantId
+    enableRbacAuthorization: true
+    enableSoftDelete: true
+    softDeleteRetentionInDays: 7
+    publicNetworkAccess: 'Enabled'
+  }
+}
+
+resource kvSecretsUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(keyVault.id, uami.id, kvSecretsUserRoleId)
+  scope: keyVault
+  properties: {
+    principalId: uami.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', kvSecretsUserRoleId)
+  }
+}
+
+resource kvAdmin 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(deployerObjectId)) {
+  name: guid(keyVault.id, deployerObjectId, kvAdminRoleId)
+  scope: keyVault
+  properties: {
+    principalId: deployerObjectId
+    principalType: 'User'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', kvAdminRoleId)
+  }
+}
+
+resource secretPayload 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'payload-secret'
+  properties: { value: payloadSecret }
+}
+
+resource secretAcs 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'acs-connection-string'
+  properties: { value: empty(acsConnectionString) ? 'unset' : acsConnectionString }
+}
+
+// ── Container Apps Environment + Azure Files storage link ────────────────────
+resource caeEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
+  name: '${resourcePrefix}-env'
+  location: location
+  tags: tags
+  properties: {
+    appLogsConfiguration: {
+      destination: 'log-analytics'
+      logAnalyticsConfiguration: {
+        customerId: logAnalytics.properties.customerId
+        sharedKey: logAnalytics.listKeys().primarySharedKey
+      }
     }
-    retentionInDays: 30
   }
 }
 
-// App Service Plan
-resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
-  name: '${resourcePrefix}-plan'
-  location: location
-  tags: tags
-  sku: {
-    name: 'B2'
-    tier: 'Basic'
-    capacity: 1
-  }
-  kind: 'linux'
+resource caeStorage 'Microsoft.App/managedEnvironments/storages@2024-03-01' = {
+  parent: caeEnv
+  name: fileShareName
   properties: {
-    reserved: true
+    azureFile: {
+      accountName: storageAccount.name
+      accountKey: storageAccount.listKeys().keys[0].value
+      shareName: fileShareName
+      accessMode: 'ReadWrite'
+    }
   }
 }
 
-// App Service
-resource appService 'Microsoft.Web/sites@2023-01-01' = {
+// ── Container App (web) ──────────────────────────────────────────────────────
+resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: '${resourcePrefix}-app'
   location: location
   tags: tags
-  kind: 'app,linux,container'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${uami.id}': {}
+    }
+  }
+  dependsOn: [
+    kvSecretsUser
+    secretPayload
+    secretAcs
+    caeStorage
+  ]
   properties: {
-    serverFarmId: appServicePlan.id
-    httpsOnly: true
-    siteConfig: {
-      linuxFxVersion: 'DOCKER|${containerRegistry.properties.loginServer}/${appName}:latest'
-      alwaysOn: true
-      ftpsState: 'Disabled'
-      minTlsVersion: '1.2'
-      http20Enabled: true
-      appSettings: [
+    managedEnvironmentId: caeEnv.id
+    configuration: {
+      activeRevisionsMode: 'Single'
+      ingress: {
+        external: true
+        targetPort: 3000
+        transport: 'auto'
+        allowInsecure: false
+      }
+      secrets: [
         {
-          name: 'DOCKER_REGISTRY_SERVER_URL'
-          value: 'https://${containerRegistry.properties.loginServer}'
+          name: 'payload-secret'
+          keyVaultUrl: '${keyVault.properties.vaultUri}secrets/payload-secret'
+          identity: uami.id
         }
         {
-          name: 'DOCKER_REGISTRY_SERVER_USERNAME'
-          value: containerRegistry.listCredentials().username
-        }
-        {
-          name: 'DOCKER_REGISTRY_SERVER_PASSWORD'
-          value: containerRegistry.listCredentials().passwords[0].value
-        }
-        {
-          name: 'WEBSITES_ENABLE_APP_SERVICE_STORAGE'
-          value: 'false'
-        }
-        {
-          name: 'DATABASE_URI'
-          value: 'postgresql://payloadadmin:${postgresPassword}@${postgresServer.properties.fullyQualifiedDomainName}:5432/graphic_designer?sslmode=require'
-        }
-        {
-          name: 'PAYLOAD_SECRET'
-          value: payloadSecret
-        }
-        {
-          name: 'AZURE_STORAGE_CONNECTION_STRING'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
-        }
-        {
-          name: 'AZURE_STORAGE_CONTAINER_NAME'
-          value: 'portfolio-media'
-        }
-        {
-          name: 'AZURE_CDN_HOSTNAME'
-          value: cdnEndpoint.properties.hostName
-        }
-        {
-          name: 'RESEND_API_KEY'
-          value: resendApiKey
-        }
-        {
-          name: 'CONTACT_EMAIL_TO'
-          value: contactEmailTo
-        }
-        {
-          name: 'NEXT_PUBLIC_SITE_URL'
-          value: 'https://${appService.properties.defaultHostName}'
-        }
-        {
-          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
-          value: appInsights.properties.ConnectionString
+          name: 'acs-connection-string'
+          keyVaultUrl: '${keyVault.properties.vaultUri}secrets/acs-connection-string'
+          identity: uami.id
         }
       ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'web'
+          image: containerImage
+          resources: {
+            cpu: json('0.5')
+            memory: '1Gi'
+          }
+          volumeMounts: [
+            {
+              volumeName: fileShareName
+              mountPath: mountPath
+            }
+          ]
+          env: [
+            { name: 'NODE_ENV', value: 'production' }
+            // SQLite database file + media uploads live on the mounted Azure Files share.
+            { name: 'DATABASE_URI', value: 'file:${mountPath}/portfolio.db' }
+            { name: 'MEDIA_DIR', value: '${mountPath}/media' }
+            { name: 'PAYLOAD_SECRET', secretRef: 'payload-secret' }
+            { name: 'AZURE_COMMUNICATION_CONNECTION_STRING', secretRef: 'acs-connection-string' }
+            { name: 'EMAIL_FROM', value: emailFrom }
+            { name: 'CONTACT_EMAIL_TO', value: contactEmailTo }
+            { name: 'NEXT_PUBLIC_SITE_URL', value: 'https://${resourcePrefix}-app.${caeEnv.properties.defaultDomain}' }
+            { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
+          ]
+          probes: [
+            {
+              type: 'Liveness'
+              httpGet: { path: '/healthz', port: 3000 }
+              initialDelaySeconds: 15
+              periodSeconds: 30
+            }
+          ]
+        }
+      ]
+      volumes: [
+        {
+          name: fileShareName
+          storageType: 'AzureFile'
+          storageName: fileShareName
+        }
+      ]
+      scale: {
+        // Single writer for SQLite-on-SMB. Scales to zero when idle (free grant).
+        minReplicas: 0
+        maxReplicas: 1
+      }
     }
   }
 }
 
-// Outputs for GitHub Actions secrets
-output containerRegistryName string = containerRegistry.name
-output containerRegistryLoginServer string = containerRegistry.properties.loginServer
-output appServiceName string = appService.name
-output cdnEndpointHostname string = cdnEndpoint.properties.hostName
+// ── Outputs ──────────────────────────────────────────────────────────────────
+output containerAppName string = containerApp.name
+output containerAppFqdn string = containerApp.properties.configuration.ingress.fqdn
+output keyVaultName string = keyVault.name
+output storageAccountName string = storageAccount.name
+output managedIdentityClientId string = uami.properties.clientId
 output appInsightsConnectionString string = appInsights.properties.ConnectionString
-output appInsightsInstrumentationKey string = appInsights.properties.InstrumentationKey
-output appServiceUrl string = 'https://${appService.properties.defaultHostName}'
-output postgresServerFqdn string = postgresServer.properties.fullyQualifiedDomainName
+output siteUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'

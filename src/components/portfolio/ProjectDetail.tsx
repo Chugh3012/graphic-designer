@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { RichText } from "@payloadcms/richtext-lexical/react";
 import { Container } from "@/components/ui/Container";
+import { ContentBlockRenderer } from "@/components/portfolio/blocks/ContentBlockRenderer";
 import type { Project, Media } from "@/payload-types";
 
 interface ProjectDetailProps {
@@ -34,21 +34,31 @@ export function ProjectDetail({ project }: ProjectDetailProps) {
   const title = project.title || "Untitled Project";
   const heroImageUrl = getImageUrl(project.heroImage);
   const heroImageAlt = getImageAlt(project.heroImage, title);
-  const client = project.client || "Client Name";
-  const year = project.year?.toString() || "2024";
+  const company = project.company || null;
+  const client = project.client || null;
+  const year = project.year?.toString() || null;
   const services = normalizeServices(project.services);
   const description = project.summary || "";
-  const content = project.content || null;
-  const gallery = project.gallery || [];
-  
-  // Navigation properties (these would need to be passed from the page)
+  const brief = project.brief || null;
+  const keyConsiderations = project.keyConsiderations || [];
+  const concept = project.concept || null;
+  const contentBlocks = project.contentBlocks || [];
+
+  // Navigation properties
   const previousProject = (project as ProjectDetailProps["project"] & { previousProject?: { slug: string; title: string } | null }).previousProject || null;
   const nextProject = (project as ProjectDetailProps["project"] & { nextProject?: { slug: string; title: string } | null }).nextProject || null;
+
+  // Build metadata items dynamically
+  const metaItems: { label: string; value: string }[] = [];
+  if (company) metaItems.push({ label: "Agency", value: company });
+  if (client) metaItems.push({ label: "Client", value: client });
+  if (year) metaItems.push({ label: "Year", value: year });
+  if (services.length > 0) metaItems.push({ label: "Services", value: services.join(", ") });
 
   return (
     <article className="bg-cream">
       {/* Hero Image */}
-      <div className="relative w-full aspect-[16/9] md:aspect-[21/9] bg-cream-dark">
+      <div className="relative w-full aspect-video md:aspect-21/9 bg-cream-dark">
         <Image
           src={heroImageUrl}
           alt={heroImageAlt}
@@ -62,6 +72,11 @@ export function ProjectDetail({ project }: ProjectDetailProps) {
       {/* Project Header */}
       <Container>
         <div className="py-16 md:py-24">
+          {company && (
+            <p className="font-sans text-xs tracking-widest uppercase text-stone mb-4">
+              {company}
+            </p>
+          )}
           <h1 className="font-serif text-4xl md:text-6xl tracking-tight text-charcoal mb-8">
             {title}
           </h1>
@@ -75,86 +90,75 @@ export function ProjectDetail({ project }: ProjectDetailProps) {
       </Container>
 
       {/* Metadata Bar */}
-      <div className="border-y border-stone-light/30">
-        <Container>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 py-8">
-            <div>
-              <h4 className="font-sans text-xs tracking-widest uppercase text-stone mb-2">
-                Client
-              </h4>
-              <p className="font-sans text-sm text-charcoal">{client}</p>
+      {metaItems.length > 0 && (
+        <div className="border-y border-stone-light/30">
+          <Container>
+            <div className={`grid grid-cols-1 md:grid-cols-${Math.min(metaItems.length, 4)} gap-8 py-8`}>
+              {metaItems.map((item) => (
+                <div key={item.label}>
+                  <h4 className="font-sans text-xs tracking-widest uppercase text-stone mb-2">
+                    {item.label}
+                  </h4>
+                  <p className="font-sans text-sm text-charcoal">{item.value}</p>
+                </div>
+              ))}
             </div>
-            <div>
-              <h4 className="font-sans text-xs tracking-widest uppercase text-stone mb-2">
-                Year
-              </h4>
-              <p className="font-sans text-sm text-charcoal">{year}</p>
-            </div>
-            <div>
-              <h4 className="font-sans text-xs tracking-widest uppercase text-stone mb-2">
-                Services
-              </h4>
-              <p className="font-sans text-sm text-charcoal">
-                {services.length > 0 ? services.join(", ") : "Design"}
-              </p>
-            </div>
-          </div>
-        </Container>
-      </div>
+          </Container>
+        </div>
+      )}
 
-      {/* Rich Content Area */}
-      {content && (
+      {/* Brief Section */}
+      {(brief || keyConsiderations.length > 0) && (
         <Container>
-          <div className="py-16 md:py-24 max-w-3xl">
-            <RichText
-              className="font-sans text-base leading-relaxed text-charcoal-light prose prose-headings:font-serif prose-headings:text-charcoal prose-a:text-accent"
-              data={content}
-            />
+          <div className="py-16 md:py-20 max-w-3xl">
+            <h2 className="font-serif text-2xl md:text-3xl tracking-tight text-charcoal mb-6">
+              The Brief
+            </h2>
+            {brief && (
+              <p className="font-sans text-base leading-relaxed text-charcoal-light mb-8">
+                {brief}
+              </p>
+            )}
+            {keyConsiderations.length > 0 && (
+              <div>
+                <h3 className="font-sans text-xs tracking-widest uppercase text-stone mb-4">
+                  Key Considerations
+                </h3>
+                <ol className="space-y-3 list-decimal list-inside">
+                  {keyConsiderations.map((item, index) => (
+                    <li
+                      key={item.id || index}
+                      className="font-sans text-sm leading-relaxed text-charcoal-light pl-1"
+                    >
+                      {item.consideration}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
           </div>
         </Container>
       )}
 
-      {/* Image Gallery Grid */}
-      {gallery.length > 0 && (
-        <Container>
-          <div className="pb-16 md:pb-24">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              {gallery.map((item, index) => {
-                const imageUrl = getImageUrl(item.image);
-                const imageAlt = getImageAlt(item.image, `Gallery image ${index + 1}`);
-                const caption = item.caption || "";
-                
-                return (
-                  <div
-                    key={item.id || index}
-                    className={`relative aspect-[4/3] bg-cream-dark rounded-sm overflow-hidden ${
-                      index === 0 ? "md:col-span-2 md:aspect-[16/9]" : ""
-                    }`}
-                  >
-                    <Image
-                      src={imageUrl}
-                      alt={imageAlt}
-                      fill
-                      sizes={
-                        index === 0
-                          ? "100vw"
-                          : "(max-width: 768px) 100vw, 50vw"
-                      }
-                      className="object-cover"
-                    />
-                    {caption && (
-                      <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-charcoal/60 to-transparent">
-                        <p className="font-sans text-xs text-cream/90">
-                          {caption}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+      {/* Concept Section */}
+      {concept && (
+        <div className="bg-cream-dark">
+          <Container>
+            <div className="py-16 md:py-20 max-w-3xl">
+              <h2 className="font-serif text-2xl md:text-3xl tracking-tight text-charcoal mb-6">
+                Concept
+              </h2>
+              <p className="font-sans text-base leading-relaxed text-charcoal-light">
+                {concept}
+              </p>
             </div>
-          </div>
-        </Container>
+          </Container>
+        </div>
+      )}
+
+      {/* Dynamic Content Blocks */}
+      {contentBlocks.length > 0 && (
+        <ContentBlockRenderer blocks={contentBlocks} />
       )}
 
       {/* Next / Previous Navigation */}

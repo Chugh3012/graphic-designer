@@ -1,15 +1,22 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// TODO: Replace `any` types with auto-generated Payload types after running `npm run generate:types`
+import type { Where } from 'payload'
+import type {
+  Project,
+  ProjectCategory,
+  SiteSetting,
+  HomePage,
+  Navigation,
+  Footer,
+} from '@/payload-types'
 import { getPayloadClient } from './payload'
 
 /**
  * Fetch published projects, optionally filtered by category slug.
  * Sorted by sortOrder (asc) then createdAt (desc).
  */
-export async function getPublishedProjects(category?: string): Promise<any[]> {
+export async function getPublishedProjects(category?: string): Promise<Project[]> {
   const payload = await getPayloadClient()
 
-  const where: any = {
+  const where: Where = {
     status: { equals: 'published' },
   }
 
@@ -31,7 +38,7 @@ export async function getPublishedProjects(category?: string): Promise<any[]> {
 /**
  * Fetch published and featured projects, limited to 4.
  */
-export async function getFeaturedProjects(): Promise<any[]> {
+export async function getFeaturedProjects(): Promise<Project[]> {
   const payload = await getPayloadClient()
 
   const { docs } = await payload.find({
@@ -51,7 +58,7 @@ export async function getFeaturedProjects(): Promise<any[]> {
 /**
  * Fetch a single project by its slug. Returns the project or null.
  */
-export async function getProjectBySlug(slug: string): Promise<any | null> {
+export async function getProjectBySlug(slug: string): Promise<Project | null> {
   const payload = await getPayloadClient()
 
   const { docs } = await payload.find({
@@ -82,13 +89,13 @@ export async function getAllProjectSlugs(): Promise<string[]> {
     depth: 0,
   })
 
-  return docs.map((doc: any) => doc.slug)
+  return docs.map((doc) => doc.slug)
 }
 
 /**
  * Fetch all project categories sorted by name.
  */
-export async function getProjectCategories(): Promise<any[]> {
+export async function getProjectCategories(): Promise<ProjectCategory[]> {
   const payload = await getPayloadClient()
 
   const { docs } = await payload.find({
@@ -104,7 +111,7 @@ export async function getProjectCategories(): Promise<any[]> {
 /**
  * Fetch the SiteSettings global.
  */
-export async function getSiteSettings(): Promise<any> {
+export async function getSiteSettings(): Promise<SiteSetting> {
   const payload = await getPayloadClient()
 
   return payload.findGlobal({
@@ -116,7 +123,7 @@ export async function getSiteSettings(): Promise<any> {
 /**
  * Fetch the HomePage global.
  */
-export async function getHomePage(): Promise<any> {
+export async function getHomePage(): Promise<HomePage> {
   const payload = await getPayloadClient()
 
   return payload.findGlobal({
@@ -128,7 +135,7 @@ export async function getHomePage(): Promise<any> {
 /**
  * Fetch the Navigation global.
  */
-export async function getNavigation(): Promise<any> {
+export async function getNavigation(): Promise<Navigation> {
   const payload = await getPayloadClient()
 
   return payload.findGlobal({
@@ -140,7 +147,7 @@ export async function getNavigation(): Promise<any> {
 /**
  * Fetch the Footer global.
  */
-export async function getFooter(): Promise<any> {
+export async function getFooter(): Promise<Footer> {
   const payload = await getPayloadClient()
 
   return payload.findGlobal({

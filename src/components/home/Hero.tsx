@@ -7,18 +7,19 @@ export function Hero() {
       <Container>
         <div className="max-w-3xl py-32 md:py-0">
           <p className="font-sans text-sm tracking-widest uppercase text-stone mb-6">
-            Graphic Designer &mdash; Brand Strategist
+            Graphic Designer &mdash; Packaging &amp; Branding
           </p>
 
           <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl leading-[1.05] tracking-tight text-charcoal mb-8">
-            Designs that
+            Clean, clear &amp;
             <br />
-            tell your story
+            something different
           </h1>
 
           <p className="font-sans text-lg md:text-xl leading-relaxed text-charcoal-light max-w-xl mb-12">
-            I create thoughtful visual identities and brand experiences that
-            connect with people and stand the test of time.
+            I&apos;m a graphic designer with a focus on packaging and branding,
+            passionate about creating designs that are visually striking,
+            meaningful, and built to connect.
           </p>
 
           <Button href="/work" variant="primary" size="lg">

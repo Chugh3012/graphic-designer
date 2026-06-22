@@ -9,6 +9,7 @@ interface ProjectCardProps {
   slug: string;
   heroImage: string;
   categories: string[];
+  company?: string;
 }
 
 export function ProjectCard({
@@ -16,6 +17,7 @@ export function ProjectCard({
   slug,
   heroImage,
   categories,
+  company,
 }: ProjectCardProps) {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -27,7 +29,7 @@ export function ProjectCard({
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Image Container */}
-      <div className="relative aspect-[4/3] overflow-hidden rounded-sm bg-cream-dark">
+      <div className="relative aspect-4/3 overflow-hidden rounded-sm bg-cream-dark">
         <Image
           src={heroImage}
           alt={title}
@@ -55,7 +57,15 @@ export function ProjectCard({
         <h3 className="font-serif text-xl text-charcoal group-hover:text-accent transition-colors">
           {title}
         </h3>
-        <div className="flex items-center gap-3 mt-2">
+        <div className="flex items-center gap-3 mt-2 flex-wrap">
+          {company && (
+            <span className="font-sans text-xs tracking-wider text-charcoal-light">
+              {company}
+            </span>
+          )}
+          {company && categories.length > 0 && (
+            <span className="text-stone-light/50">·</span>
+          )}
           {categories.map((category) => (
             <span
               key={category}

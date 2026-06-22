@@ -28,18 +28,6 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '*.blob.core.windows.net',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.azureedge.net',
-      },
-    ],
-  },
 }
 
 export default withPayload(nextConfig)

@@ -104,6 +104,9 @@ export interface Config {
     'home-page': HomePageSelect<false> | HomePageSelect<true>;
   };
   locale: null;
+  widgets: {
+    collections: CollectionsWidget;
+  };
   user: User;
   jobs: {
     tasks: unknown;
@@ -138,6 +141,13 @@ export interface Project {
   slug: string;
   heroImage: number | Media;
   categories?: (number | ProjectCategory)[] | null;
+  /**
+   * The agency or company this project was done at (e.g. Landor, Dy works)
+   */
+  company?: string | null;
+  /**
+   * The brand or client this project was for (e.g. Gillette, Kellogg's)
+   */
   client?: string | null;
   year?: number | null;
   services?:
@@ -146,28 +156,86 @@ export interface Project {
         id?: string | null;
       }[]
     | null;
+  /**
+   * Short summary for project cards and SEO.
+   */
   summary?: string | null;
-  content?: {
-    root: {
-      type: string;
-      children: {
-        type: any;
-        version: number;
-        [k: string]: unknown;
-      }[];
-      direction: ('ltr' | 'rtl') | null;
-      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
-      indent: number;
-      version: number;
-    };
-    [k: string]: unknown;
-  } | null;
-  gallery?:
+  /**
+   * The design brief / objective for this project.
+   */
+  brief?: string | null;
+  /**
+   * Numbered list of key considerations from the brief.
+   */
+  keyConsiderations?:
     | {
-        image: number | Media;
-        caption?: string | null;
+        consideration: string;
         id?: string | null;
       }[]
+    | null;
+  /**
+   * The design concept or creative approach narrative.
+   */
+  concept?: string | null;
+  /**
+   * Build the project story using text, images, galleries, and before/after comparisons.
+   */
+  contentBlocks?:
+    | (
+        | {
+            heading?: string | null;
+            body?: {
+              root: {
+                type: string;
+                children: {
+                  type: any;
+                  version: number;
+                  [k: string]: unknown;
+                }[];
+                direction: ('ltr' | 'rtl') | null;
+                format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+                indent: number;
+                version: number;
+              };
+              [k: string]: unknown;
+            } | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'textBlock';
+          }
+        | {
+            image: number | Media;
+            caption?: string | null;
+            size?: ('full' | 'medium' | 'small') | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'imageBlock';
+          }
+        | {
+            heading?: string | null;
+            images?:
+              | {
+                  image: number | Media;
+                  caption?: string | null;
+                  id?: string | null;
+                }[]
+              | null;
+            columns?: ('2' | '3' | '4') | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'galleryBlock';
+          }
+        | {
+            heading?: string | null;
+            beforeImage: number | Media;
+            afterImage: number | Media;
+            beforeLabel?: string | null;
+            afterLabel?: string | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'beforeAfterBlock';
+          }
+      )[]
     | null;
   featured?: boolean | null;
   sortOrder?: number | null;
@@ -352,6 +420,7 @@ export interface ProjectsSelect<T extends boolean = true> {
   slug?: T;
   heroImage?: T;
   categories?: T;
+  company?: T;
   client?: T;
   year?: T;
   services?:
@@ -361,13 +430,60 @@ export interface ProjectsSelect<T extends boolean = true> {
         id?: T;
       };
   summary?: T;
-  content?: T;
-  gallery?:
+  brief?: T;
+  keyConsiderations?:
     | T
     | {
-        image?: T;
-        caption?: T;
+        consideration?: T;
         id?: T;
+      };
+  concept?: T;
+  contentBlocks?:
+    | T
+    | {
+        textBlock?:
+          | T
+          | {
+              heading?: T;
+              body?: T;
+              id?: T;
+              blockName?: T;
+            };
+        imageBlock?:
+          | T
+          | {
+              image?: T;
+              caption?: T;
+              size?: T;
+              id?: T;
+              blockName?: T;
+            };
+        galleryBlock?:
+          | T
+          | {
+              heading?: T;
+              images?:
+                | T
+                | {
+                    image?: T;
+                    caption?: T;
+                    id?: T;
+                  };
+              columns?: T;
+              id?: T;
+              blockName?: T;
+            };
+        beforeAfterBlock?:
+          | T
+          | {
+              heading?: T;
+              beforeImage?: T;
+              afterImage?: T;
+              beforeLabel?: T;
+              afterLabel?: T;
+              id?: T;
+              blockName?: T;
+            };
       };
   featured?: T;
   sortOrder?: T;
@@ -655,6 +771,16 @@ export interface HomePageSelect<T extends boolean = true> {
   updatedAt?: T;
   createdAt?: T;
   globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "collections_widget".
+ */
+export interface CollectionsWidget {
+  data?: {
+    [k: string]: unknown;
+  };
+  width: 'full';
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
