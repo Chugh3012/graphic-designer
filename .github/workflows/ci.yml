@@ -1,10 +1,19 @@
 name: CI
 
+# Deliberately lean to conserve Actions minutes (private repo = every minute is
+# billed). Two jobs, each with a single `npm ci` (was nine jobs / eight installs
+# and Next.js rebuilt 3-4x per run). The Docker image build + Trivy scan live in
+# the deploy workflow, which already builds the image — rebuilding it on every PR
+# push was pure waste. Docs-only changes skip CI entirely.
+
 on:
   pull_request:
     branches: [master]
+    paths-ignore:
+      - '**.md'
+      - '.vscode/**'
+      - 'pdf-output/**'
 
-# Prevent multiple CI runs for the same PR
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -18,246 +27,50 @@ env:
   NEXT_PUBLIC_SITE_URL: http://localhost:3000
 
 jobs:
-  # Priority 1: Security - npm audit check
-  security-audit:
-    name: Security Audit
+  checks:
+    name: Lint · types · unit · audit
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run npm audit
+      - run: npm ci
+      - name: Security audit
         run: npm audit --audit-level=high
-        continue-on-error: false
-
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run linter
+      - name: Lint
         run: npm run lint
-
-  type-check:
-    name: Type Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run type checking
+      - name: Type check
         run: npx tsc --noEmit
-
-  unit-tests:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run unit tests
+      - name: Unit tests
         run: npm run test:unit
 
-  # Priority 1: Docker build validation
-  docker-build:
-    name: Docker Build
+  e2e:
+    name: E2E (Playwright)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          push: false
-          tags: graphic-designer:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          outputs: type=docker,dest=/tmp/image.tar
-
-      - name: Upload Docker image artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-image
-          path: /tmp/image.tar
-          retention-days: 1
-
-  # Priority 2: Container security scanning with Trivy
-  container-scan:
-    name: Container Security Scan
-    runs-on: ubuntu-latest
-    needs: docker-build
-    steps:
-      - name: Download Docker image
-        uses: actions/download-artifact@v4
-        with:
-          name: docker-image
-          path: /tmp
-
-      - name: Load Docker image
-        run: docker load --input /tmp/image.tar
-
-      - name: Run Trivy vulnerability scanner (fail on CRITICAL/HIGH)
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: graphic-designer:test
-          format: 'table'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'
-          # Scan for CVEs only. The secret scanner otherwise flags the Azure
-          # Storage SDK's bundled public emulator constant (devstoreaccount1) as
-          # a false-positive "storage account key". Secret hygiene is enforced
-          # elsewhere (gitignore, Key Vault, no secrets in repo).
-          scanners: 'vuln'
-
-  # Priority 2: Bundle size analysis
-  bundle-size:
-    name: Bundle Size Analysis
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Next.js
-        run: npm run build
-        env:
-          SKIP_ENV_VALIDATION: true
-
-      - name: Analyze bundle size
-        run: |
-          echo "## Bundle Size Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Page Sizes" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          find .next/static -name '*.js' -exec ls -lh {} \; | awk '{print $9, $5}' | sort -k2 -h -r | head -20 >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-
-  # Priority 2: Lighthouse CI for performance budgets
-  lighthouse:
-    name: Lighthouse CI
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
         with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Next.js
-        run: npm run build
-        env:
-          SKIP_ENV_VALIDATION: true
-
-      - name: Start production server
-        run: npm start &
-        env:
-          CI: true
-
-      - name: Wait for server to be ready
-        run: |
-          timeout 60 bash -c 'until curl -f http://localhost:3000 > /dev/null 2>&1; do sleep 2; done'
-
-      - name: Run Lighthouse CI
-        run: |
-          npm install -g @lhci/cli@0.13.x
-          lhci autorun
-        env:
-          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
-
-      - name: Upload Lighthouse reports
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: lighthouse-reports
-          path: .lighthouseci
-          retention-days: 14
-
-  e2e-tests:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - name: Install Playwright (chromium)
         run: npx playwright install --with-deps chromium
-
       - name: Run E2E tests
         run: npm run test:e2e
         env:
           CI: true
-
-      - name: Upload test results
+      - name: Upload report
         uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
           path: playwright-report/
-          retention-days: 14
+          retention-days: 7

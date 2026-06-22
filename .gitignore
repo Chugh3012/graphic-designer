@@ -55,9 +55,6 @@ test-results/
 playwright-report/
 playwright/.cache/
 
-# Lighthouse CI
-.lighthouseci/
-
 # Bicep build output
 infra/main.json
 
