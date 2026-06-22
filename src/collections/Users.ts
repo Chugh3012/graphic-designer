@@ -2,7 +2,11 @@ import type { CollectionConfig } from 'payload'
 
 export const Users: CollectionConfig = {
   slug: 'users',
-  auth: true,
+  // Lock an account for 10 minutes after 5 failed logins (brute-force defence).
+  auth: {
+    maxLoginAttempts: 5,
+    lockTime: 600000,
+  },
   admin: {
     useAsTitle: 'email',
   },

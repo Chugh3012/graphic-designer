@@ -85,7 +85,8 @@ export const Projects: CollectionConfig = {
     defaultColumns: ['title', 'company', 'client', 'categories', 'status', 'featured'],
   },
   access: {
-    read: () => true,
+    // Anonymous callers only see published projects; logged-in admins see drafts too.
+    read: ({ req: { user } }) => (user ? true : { status: { equals: 'published' } }),
   },
   fields: [
     {

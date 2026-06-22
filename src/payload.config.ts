@@ -34,6 +34,14 @@ export default buildConfig({
 
   editor: lexicalEditor(),
 
+  // Restrict the API and auth cookies to our own origin, and disable the GraphQL
+  // playground in production — minimise the public attack surface.
+  cors: process.env.NEXT_PUBLIC_SITE_URL ? [process.env.NEXT_PUBLIC_SITE_URL] : [],
+  csrf: process.env.NEXT_PUBLIC_SITE_URL ? [process.env.NEXT_PUBLIC_SITE_URL] : [],
+  graphQL: {
+    disablePlaygroundInProduction: true,
+  },
+
   secret: process.env.PAYLOAD_SECRET || '',
 
   typescript: {
