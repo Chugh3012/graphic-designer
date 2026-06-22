@@ -1,0 +1,39 @@
+{
+  "title": "Gillette Venus Festive Banner",
+  "status": "published",
+  "featured": false,
+  "sortOrder": 3,
+  "heroImage": "03-gillette-venus-festive-banner-page-15-img-01.jpeg",
+  "categories": [
+    "banner-design"
+  ],
+  "company": "Landor",
+  "client": "Gillette",
+  "year": 2024,
+  "services": [
+    "Banner Design",
+    "Digital Advertising"
+  ],
+  "summary": "Festive season banner campaign for Gillette Venus, designed for digital and social media platforms.",
+  "brief": "Create a vibrant festive season banner campaign for Gillette Venus targeting the Indian market. The banners should celebrate the festive spirit while highlighting the Venus product range.",
+  "concept": "",
+  "keyConsiderations": [],
+  "gallery": [
+    {
+      "image": "03-gillette-venus-festive-banner-page-16-img-01.jpeg",
+      "caption": "Venus festive banner 1"
+    },
+    {
+      "image": "03-gillette-venus-festive-banner-page-16-img-02.jpeg",
+      "caption": "Venus festive banner 2"
+    },
+    {
+      "image": "03-gillette-venus-festive-banner-page-16-img-03.jpeg",
+      "caption": "Venus festive banner 3"
+    }
+  ],
+  "seo": {
+    "metaTitle": "",
+    "metaDescription": "Festive season banner campaign for Gillette Venus, designed for digital and social media platforms."
+  }
+}

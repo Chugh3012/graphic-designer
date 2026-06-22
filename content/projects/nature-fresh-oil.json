@@ -1,0 +1,39 @@
+{
+  "title": "Nature Fresh Oil",
+  "status": "published",
+  "featured": false,
+  "sortOrder": 8,
+  "heroImage": "08-nature-fresh-oil-page-73-img-01.jpeg",
+  "categories": [
+    "packaging-design"
+  ],
+  "company": "Dy works",
+  "client": "Nature Fresh",
+  "year": 2022,
+  "services": [
+    "Packaging Adaptation",
+    "Label Design"
+  ],
+  "summary": "Packaging adaptation and label design for Nature Fresh cooking oil range — translating brand identity into shelf-ready packaging.",
+  "brief": "",
+  "concept": "",
+  "keyConsiderations": [],
+  "gallery": [
+    {
+      "image": "08-nature-fresh-oil-page-73-img-02.jpeg",
+      "caption": "Nature Fresh pack 2"
+    },
+    {
+      "image": "08-nature-fresh-oil-page-73-img-03.jpeg",
+      "caption": "Nature Fresh pack 3"
+    },
+    {
+      "image": "08-nature-fresh-oil-page-73-img-04.jpeg",
+      "caption": "Nature Fresh pack 4"
+    }
+  ],
+  "seo": {
+    "metaTitle": "",
+    "metaDescription": "Packaging adaptation and label design for Nature Fresh cooking oil range — translating brand identity into shelf-ready packaging."
+  }
+}

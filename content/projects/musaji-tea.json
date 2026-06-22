@@ -1,0 +1,63 @@
+{
+  "title": "Musaji Tea",
+  "status": "published",
+  "featured": false,
+  "sortOrder": 11,
+  "heroImage": "11-musaji-tea-page-83-img-04.jpeg",
+  "categories": [
+    "packaging-design"
+  ],
+  "company": "Dy works",
+  "client": "Musaji",
+  "year": 2021,
+  "services": [
+    "Packaging Design",
+    "Range Extension"
+  ],
+  "summary": "Packaging design for Musaji premium tea range — a heritage tea brand with a contemporary design approach.",
+  "brief": "Redesign Musaji Tea's packaging to elevate the brand's premium positioning while honoring its heritage. The new packaging should appeal to modern consumers seeking quality tea experiences.",
+  "concept": "",
+  "keyConsiderations": [],
+  "gallery": [
+    {
+      "image": "11-musaji-tea-page-83-img-01.jpeg",
+      "caption": "Musaji tea exploration 1"
+    },
+    {
+      "image": "11-musaji-tea-page-83-img-02.jpeg",
+      "caption": "Musaji tea exploration 2"
+    },
+    {
+      "image": "11-musaji-tea-page-83-img-03.jpeg",
+      "caption": "Musaji tea exploration 3"
+    },
+    {
+      "image": "11-musaji-tea-page-84-img-01.jpeg",
+      "caption": "Musaji tea final 1"
+    },
+    {
+      "image": "11-musaji-tea-page-84-img-02.jpeg",
+      "caption": "Musaji tea final 2"
+    },
+    {
+      "image": "11-musaji-tea-page-84-img-03.jpeg",
+      "caption": "Musaji tea final 3"
+    },
+    {
+      "image": "11-musaji-tea-page-85-img-01.jpeg",
+      "caption": "Musaji tea pack 1"
+    },
+    {
+      "image": "11-musaji-tea-page-85-img-02.jpeg",
+      "caption": "Musaji tea pack 2"
+    },
+    {
+      "image": "11-musaji-tea-page-85-img-03.jpeg",
+      "caption": "Musaji tea pack 3"
+    }
+  ],
+  "seo": {
+    "metaTitle": "",
+    "metaDescription": "Packaging design for Musaji premium tea range — a heritage tea brand with a contemporary design approach."
+  }
+}

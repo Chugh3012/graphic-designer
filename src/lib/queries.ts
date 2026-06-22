@@ -1,157 +1,109 @@
-import type { Where } from 'payload'
-import type {
-  Project,
-  ProjectCategory,
-  SiteSetting,
-  HomePage,
-  Navigation,
-  Footer,
-} from '@/payload-types'
-import { getPayloadClient } from './payload'
+import { createReader } from '@keystatic/core/reader'
+import keystaticConfig from '../../keystatic.config'
 
-/**
- * Fetch published projects, optionally filtered by category slug.
- * Sorted by sortOrder (asc) then createdAt (desc).
- */
-export async function getPublishedProjects(category?: string): Promise<Project[]> {
-  const payload = await getPayloadClient()
+// Reads content files at build time → fully static pages. No DB, no server.
+const reader = createReader(process.cwd(), keystaticConfig)
 
-  const where: Where = {
-    status: { equals: 'published' },
+function img(v: string | null | undefined): string {
+  if (!v) return '/images/placeholder-1.svg'
+  return v.startsWith('/') ? v : `/images/projects/${v}`
+}
+
+export interface ProjectSummary {
+  title: string
+  slug: string
+  heroImage: string
+  categories: string[]
+  company: string
+}
+
+export interface ProjectFull extends ProjectSummary {
+  client: string
+  year?: number
+  services: string[]
+  summary: string
+  brief: string
+  concept: string
+  keyConsiderations: string[]
+  gallery: { src: string; caption: string }[]
+  metaTitle: string
+  metaDescription: string
+}
+
+type ProjectEntry = NonNullable<Awaited<ReturnType<typeof reader.collections.projects.read>>>
+
+let nameCache: Map<string, string> | null = null
+async function categoryMap(): Promise<Map<string, string>> {
+  if (nameCache) return nameCache
+  const cats = await reader.collections.categories.all()
+  nameCache = new Map(cats.map((c) => [c.slug, c.entry.name]))
+  return nameCache
+}
+
+function toSummary(slug: string, e: ProjectEntry, names: Map<string, string>): ProjectSummary {
+  return {
+    title: e.title,
+    slug,
+    heroImage: img(e.heroImage),
+    categories: (e.categories ?? []).map((s) => names.get(s as string) ?? (s as string)),
+    company: e.company ?? '',
   }
+}
 
-  if (category) {
-    where['categories.slug'] = { equals: category }
+async function publishedSorted() {
+  const all = await reader.collections.projects.all()
+  return all
+    .filter((p) => p.entry.status === 'published')
+    .sort((a, b) => (a.entry.sortOrder ?? 0) - (b.entry.sortOrder ?? 0))
+}
+
+export async function getPublishedProjects(category?: string): Promise<ProjectSummary[]> {
+  const [items, names] = await Promise.all([publishedSorted(), categoryMap()])
+  const summaries = items.map((p) => toSummary(p.slug, p.entry, names))
+  if (category) return summaries.filter((s) => s.categories.includes(category))
+  return summaries
+}
+
+export async function getFeaturedProjects(): Promise<ProjectSummary[]> {
+  const [items, names] = await Promise.all([publishedSorted(), categoryMap()])
+  return items
+    .filter((p) => p.entry.featured)
+    .slice(0, 4)
+    .map((p) => toSummary(p.slug, p.entry, names))
+}
+
+export async function getProjectBySlug(slug: string): Promise<ProjectFull | null> {
+  const [entry, names] = await Promise.all([reader.collections.projects.read(slug), categoryMap()])
+  if (!entry || entry.status !== 'published') return null
+  return {
+    ...toSummary(slug, entry, names),
+    client: entry.client ?? '',
+    year: entry.year ?? undefined,
+    services: [...(entry.services ?? [])],
+    summary: entry.summary ?? '',
+    brief: entry.brief ?? '',
+    concept: entry.concept ?? '',
+    keyConsiderations: [...(entry.keyConsiderations ?? [])],
+    gallery: (entry.gallery ?? []).map((g) => ({ src: img(g.image), caption: g.caption ?? '' })),
+    metaTitle: entry.seo?.metaTitle || entry.title,
+    metaDescription: entry.seo?.metaDescription || entry.summary || '',
   }
-
-  const { docs } = await payload.find({
-    collection: 'projects',
-    where,
-    sort: 'sortOrder',
-    limit: 100,
-    depth: 2,
-  })
-
-  return docs
 }
 
-/**
- * Fetch published and featured projects, limited to 4.
- */
-export async function getFeaturedProjects(): Promise<Project[]> {
-  const payload = await getPayloadClient()
-
-  const { docs } = await payload.find({
-    collection: 'projects',
-    where: {
-      status: { equals: 'published' },
-      featured: { equals: true },
-    },
-    sort: 'sortOrder',
-    limit: 4,
-    depth: 2,
-  })
-
-  return docs
-}
-
-/**
- * Fetch a single project by its slug. Returns the project or null.
- */
-export async function getProjectBySlug(slug: string): Promise<Project | null> {
-  const payload = await getPayloadClient()
-
-  const { docs } = await payload.find({
-    collection: 'projects',
-    where: {
-      slug: { equals: slug },
-      status: { equals: 'published' },
-    },
-    limit: 1,
-    depth: 2,
-  })
-
-  return docs[0] ?? null
-}
-
-/**
- * Fetch all published project slugs (for generateStaticParams).
- */
 export async function getAllProjectSlugs(): Promise<string[]> {
-  const payload = await getPayloadClient()
-
-  const { docs } = await payload.find({
-    collection: 'projects',
-    where: {
-      status: { equals: 'published' },
-    },
-    limit: 1000,
-    depth: 0,
-  })
-
-  return docs.map((doc) => doc.slug)
+  const items = await publishedSorted()
+  return items.map((p) => p.slug)
 }
 
-/**
- * Fetch all project categories sorted by name.
- */
-export async function getProjectCategories(): Promise<ProjectCategory[]> {
-  const payload = await getPayloadClient()
-
-  const { docs } = await payload.find({
-    collection: 'project-categories',
-    sort: 'name',
-    limit: 100,
-    depth: 0,
-  })
-
-  return docs
+export async function getProjectCategories(): Promise<string[]> {
+  const cats = await reader.collections.categories.all()
+  return cats.map((c) => c.entry.name).sort()
 }
 
-/**
- * Fetch the SiteSettings global.
- */
-export async function getSiteSettings(): Promise<SiteSetting> {
-  const payload = await getPayloadClient()
-
-  return payload.findGlobal({
-    slug: 'site-settings',
-    depth: 1,
-  })
+export async function getSiteSettings() {
+  return reader.singletons.siteSettings.read()
 }
 
-/**
- * Fetch the HomePage global.
- */
-export async function getHomePage(): Promise<HomePage> {
-  const payload = await getPayloadClient()
-
-  return payload.findGlobal({
-    slug: 'home-page',
-    depth: 2,
-  })
-}
-
-/**
- * Fetch the Navigation global.
- */
-export async function getNavigation(): Promise<Navigation> {
-  const payload = await getPayloadClient()
-
-  return payload.findGlobal({
-    slug: 'navigation',
-    depth: 1,
-  })
-}
-
-/**
- * Fetch the Footer global.
- */
-export async function getFooter(): Promise<Footer> {
-  const payload = await getPayloadClient()
-
-  return payload.findGlobal({
-    slug: 'footer',
-    depth: 1,
-  })
+export async function getHomePage() {
+  return reader.singletons.homePage.read()
 }
